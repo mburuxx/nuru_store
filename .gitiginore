@@ -1,0 +1,4 @@
+.env
+*/pycache__/
+*.sqlite3
+*.pyc
