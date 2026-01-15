@@ -34,6 +34,13 @@ class StockMovement(models.Model):
     movement_type = models.CharField(max_length=20, choices=MovementType.choices)
     direction = models.CharField(max_length=3, choices=Direction.choices)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    sale = models.ForeignKey(
+        "sales.Sale",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_movements",
+    )
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_stock_movements"
@@ -46,5 +53,3 @@ class StockMovement(models.Model):
 
     def __str__(self) -> str:
         return f"{self.product.sku} {self.direction} {self.quantity} ({self.movement_type})"
-
-        
