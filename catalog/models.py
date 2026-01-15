@@ -23,6 +23,9 @@ class Category(models.Model):
         return self.name
 
 class Product(models.Model):
+    category = models.ForeignKey(
+        Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="products"
+    )
     name = models.CharField(max_length=200)
     sku = models.CharField(max_length=64, unique=True)  # barcode/SKU
     selling_price = models.DecimalField(max_digits=12, decimal_places=2)
