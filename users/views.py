@@ -3,7 +3,14 @@ from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib import messages
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_http_methods
 
+from .forms import LoginForm, RegisterForm
+from .models import UserProfile
 from .models import UserProfile
 from .serializers import LoginSerializer, ProfileSerializer, RegisterSerializer
 
@@ -67,3 +74,52 @@ class ProfileView(generics.RetrieveAPIView):
         # Your signal creates it, but we still guard
         profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         return profile
+
+# traditional django views
+@require_http_methods(["GET", "POST"])
+def web_register(request):
+    if request.user.is_authenticated:
+        return redirect("web-profile")
+
+    form = RegisterForm(request.POST or None)
+    if request.method == "POST":
+        if form.is_valid():
+            user = form.save()
+            login(request, user)  # session login
+            messages.success(request, "Account created. Welcome!")
+            return redirect("web-profile")
+        else:
+            messages.error(request, "Please fix the errors below.")
+
+    return render(request, "register.html", {"form": form})
+
+
+@require_http_methods(["GET", "POST"])
+def web_login(request):
+    if request.user.is_authenticated:
+        return redirect("web-profile")
+
+    form = LoginForm(request, data=request.POST or None)
+    if request.method == "POST":
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            messages.success(request, "Logged in successfully.")
+            return redirect("web-profile")
+        else:
+            messages.error(request, "Invalid username or password.")
+
+    return render(request, "login.html", {"form": form})
+
+
+@require_http_methods(["POST"])
+def web_logout(request):
+    logout(request)
+    messages.info(request, "You’ve been logged out.")
+    return redirect("web-login")
+
+
+@login_required
+def web_profile(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    return render(request, "profile.html", {"profile": profile})
