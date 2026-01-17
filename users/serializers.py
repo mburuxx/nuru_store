@@ -61,4 +61,57 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ["username", "email", "role", "phone"]
-        read_only_fields = ["role"]  # only superuser should change role via admin
+        read_only_fields = ["role"]
+
+
+class MeSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    email = serializers.EmailField(source="user.email", required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ["username", "email", "role", "phone"]
+        read_only_fields = ["role"]
+
+    def validate(self, attrs):
+        # validate email uniqueness if provided
+        user_data = attrs.get("user", {})
+        email = user_data.get("email")
+        if email is not None:
+            email = email.strip()
+            if email and User.objects.filter(email__iexact=email).exclude(pk=self.instance.user.pk).exists():
+                raise serializers.ValidationError({"email": "That email is already used by another account."})
+        return attrs
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", {})
+        email = user_data.get("email", None)
+
+        if email is not None:
+            instance.user.email = email.strip()
+            instance.user.save(update_fields=["email"])
+
+        phone = validated_data.get("phone", None)
+        if phone is not None:
+            instance.phone = phone
+            instance.save(update_fields=["phone"])
+
+        return instance
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=6)
+
+    def validate_old_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Old password is incorrect.")
+        return value
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        new_password = self.validated_data["new_password"]
+        user.set_password(new_password)
+        user.save()
+        return user
