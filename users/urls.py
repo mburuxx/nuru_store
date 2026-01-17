@@ -14,5 +14,7 @@ urlpatterns = [
     path("register/", web_register, name="web-register"),
     path("login/", web_login, name="web-login"),
     path("logout/", web_logout, name="web-logout"),
-    path("profile/", web_profile, name="web-profile"),
+    path("profile/", web_profile, name="web-profile"), 
+    path("profile/edit/", web_profile_edit, name="web-profile-edit"),
+    path("admin/roles/", web_role_manage, name="web-role-manage"),
 ]
