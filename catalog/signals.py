@@ -7,4 +7,4 @@ from inventory.models import Inventory
 @receiver(post_save, sender=Product)
 def create_inventory(sender, instance, created, **kwargs):
     if created:
-        Inventory.objects.create(product=instance)
+        Inventory.objects.get_or_create(product=instance)
