@@ -5,11 +5,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib import messages
 from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
-from .forms import LoginForm, RegisterForm
+from .forms import LoginForm, RegisterForm, ProfileEditForm, PromoteRoleForm
 from .models import UserProfile
 from .models import UserProfile
 from .serializers import LoginSerializer, ProfileSerializer, RegisterSerializer
@@ -123,3 +123,46 @@ def web_logout(request):
 def web_profile(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     return render(request, "profile.html", {"profile": profile})
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def web_profile_edit(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    form = ProfileEditForm(request.POST or None, instance=profile, user=request.user)
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile updated.")
+            return redirect("web-profile")
+        messages.error(request, "Please fix the errors below.")
+
+    return render(request, "profile_edit.html", {"form": form})
+
+
+def _is_superuser(user):
+    return user.is_authenticated and user.is_superuser
+
+
+@user_passes_test(_is_superuser)
+@require_http_methods(["GET", "POST"])
+def web_role_manage(request):
+    form = PromoteRoleForm(request.POST or None)
+
+    if request.method == "POST":
+        if form.is_valid():
+            target_user = form.user_obj
+            role = form.cleaned_data["role"]
+
+            profile, _ = UserProfile.objects.get_or_create(user=target_user)
+            profile.role = role
+            profile.save()
+
+            messages.success(
+                request,
+                f"Updated {target_user.username}'s role to {role}."
+            )
+            return redirect("web-role-manage")
+        messages.error(request, "Please fix the errors below.")
+
+    return render(request, "role_manage.html", {"form": form})
