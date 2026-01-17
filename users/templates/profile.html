@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h4 class="mb-3">Your Profile</h4>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="p-3 bg-white border rounded">
+          <div class="fw-bold">Username</div>
+          <div>{{ request.user.username }}</div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="p-3 bg-white border rounded">
+          <div class="fw-bold">Email</div>
+          <div>{{ request.user.email|default:"-" }}</div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="p-3 bg-white border rounded">
+          <div class="fw-bold">Role</div>
+          <div class="badge bg-dark">{{ profile.role }}</div>
+          <div class="text-muted small mt-1">
+            Role changes are admin-only (superuser).
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="p-3 bg-white border rounded">
+          <div class="fw-bold">Phone</div>
+          <div>{{ profile.phone|default:"-" }}</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
