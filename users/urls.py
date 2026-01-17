@@ -2,7 +2,8 @@ from django.urls import path
 
 from .views import (
     LoginView, LogoutView, ProfileView, RegisterView,  # API views
-    web_login, web_logout, web_profile, web_register,  # WEB views
+    web_register, web_login, web_logout, web_profile,
+    web_profile_edit, web_role_manage,  # WEB views
 )
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
