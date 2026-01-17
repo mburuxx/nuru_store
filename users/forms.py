@@ -48,3 +48,50 @@ class RegisterForm(forms.ModelForm):
 class LoginForm(AuthenticationForm):
     # Django's AuthenticationForm already handles auth
     pass
+
+class ProfileEditForm(forms.ModelForm):
+    email = forms.EmailField(required=False, label="Email")
+
+    class Meta:
+        model = UserProfile
+        fields = ["phone"]  # role not editable by user
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user")
+        super().__init__(*args, **kwargs)
+        self.fields["email"].initial = self.user.email
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip()
+        if email and User.objects.filter(email__iexact=email).exclude(pk=self.user.pk).exists():
+            raise forms.ValidationError("That email is already used by another account.")
+        return email
+
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+        self.user.email = self.cleaned_data.get("email", "")
+        if commit:
+            self.user.save()
+            profile.save()
+        return profile
+
+
+class PromoteRoleForm(forms.Form):
+    username = forms.CharField(label="Username")
+    role = forms.ChoiceField(choices=UserProfile.Role.choices, label="Role")
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise forms.ValidationError("User not found.")
+        self.user_obj = user
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        user = getattr(self, "user_obj", None)
+        if user and user.is_superuser:
+            self.add_error("username", "You can't change role for a superuser here.")
+        return cleaned
