@@ -7,6 +7,7 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ("name",)
     list_filter = ("is_active",)
     prepopulated_fields = {"slug": ("name",)}
+    list_select_related = ("parent",)
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
