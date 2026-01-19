@@ -5,6 +5,8 @@ class Notification(models.Model):
     class Type(models.TextChoices):
         SALE_MADE = "SALE_MADE", "Sale made"
         LOW_STOCK = "LOW_STOCK", "Low stock"
+        SALE_VOIDED = "SALE_VOIDED", "Sale voided"
+
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -23,6 +25,11 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["recipient", "is_read"]),
+            models.Index(fields=["type"]),
+        ]
+
 
     def __str__(self) -> str:
         return f"{self.type} -> {self.recipient}"

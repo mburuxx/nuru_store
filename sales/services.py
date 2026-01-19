@@ -14,20 +14,13 @@ class InsufficientStock(Exception):
 
 
 def _is_low_stock(inv: Inventory) -> bool:
-    # Use reorder_level if set, otherwise use threshold percent against a simple baseline assumption.
-    # For now: if reorder_level exists use it; else if quantity <= 0 treat as low
     if inv.reorder_level is not None:
         return inv.quantity <= inv.reorder_level
-    # Minimal fallback: treat <= 0 as low (Phase 4 will refine percent baseline)
     return inv.quantity <= 0
 
 
 @transaction.atomic
 def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_prefix="RCPT") -> Sale:
-    """
-    items: [{ "product_id": int, "quantity": int }, ...]
-    """
-    # Lock inventories for involved products to prevent race conditions
     product_ids = [i["product_id"] for i in items]
 
     inventories = (
@@ -37,7 +30,6 @@ def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_pref
     )
     inv_map = {inv.product_id: inv for inv in inventories}
 
-    # Validate + compute
     subtotal = Decimal("0.00")
     sale_items_to_create = []
 
@@ -49,8 +41,8 @@ def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_pref
         if not inv:
             raise ValueError(f"Inventory not found for product_id={pid}")
 
-        if qty <= 0:
-            raise ValueError("Quantity must be >= 1")
+        if inv.product.is_active is False:
+            raise ValueError(f"Product inactive: {inv.product.sku}")
 
         if inv.quantity < qty:
             raise InsufficientStock(
@@ -59,12 +51,9 @@ def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_pref
 
         unit_price = inv.product.selling_price
         line_total = (unit_price * Decimal(qty)).quantize(Decimal("0.01"))
-
         subtotal += line_total
-
         sale_items_to_create.append((inv.product, qty, unit_price, line_total))
 
-    # Create sale header
     sale = Sale.objects.create(
         cashier=cashier,
         payment_method=payment_method,
@@ -74,7 +63,6 @@ def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_pref
         status=Sale.Status.COMPLETED,
     )
 
-    # Create sale items + deduct inventory + movements
     for product, qty, unit_price, line_total in sale_items_to_create:
         SaleItem.objects.create(
             sale=sale,
@@ -84,9 +72,7 @@ def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_pref
             line_total=line_total,
         )
 
-        # Deduct inventory (safe, inside lock)
-        Inventory.objects.filter(product=product).update(quantity=F("quantity") - qty)
-
+        # ONLY create movement. Inventory will update via inventory.signals.apply_stock_movement
         StockMovement.objects.create(
             product=product,
             movement_type=StockMovement.MovementType.SALE,
@@ -97,14 +83,10 @@ def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_pref
             notes=f"Sale #{sale.id}",
         )
 
-    # Refresh inventories to evaluate low-stock after deductions
-    updated_inventories = Inventory.objects.filter(product_id__in=product_ids).select_related("product")
-
-    # Create receipt
     receipt_no = generate_receipt_number(prefix=receipt_prefix)
     Receipt.objects.create(sale=sale, receipt_number=receipt_no)
 
-    # Notify all owners
+    # Notifications (keep)
     owner_users = cashier.__class__.objects.filter(profile__role="OWNER", is_active=True)
     for owner in owner_users:
         Notification.objects.create(
@@ -114,22 +96,42 @@ def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_pref
             sale_id=sale.id,
         )
 
-    # Low stock notifications (crossing threshold only)
-    for inv in updated_inventories:
-        low = _is_low_stock(inv)
+    return sale
 
-        if low and not inv.low_stock_flag:
-            # mark flag
-            Inventory.objects.filter(id=inv.id).update(low_stock_flag=True)
-            for owner in owner_users:
-                Notification.objects.create(
-                    recipient=owner,
-                    type=Notification.Type.LOW_STOCK,
-                    message=f"Low stock: {inv.product.name} ({inv.product.sku}) qty={inv.quantity}",
-                    product_id=inv.product_id,
-                )
-        elif (not low) and inv.low_stock_flag:
-            # clear flag if restocked above threshold
-            Inventory.objects.filter(id=inv.id).update(low_stock_flag=False)
+class AlreadyVoided(Exception):
+    pass
+
+
+@transaction.atomic
+def void_sale(*, sale_id: int, voided_by, notes: str = "") -> Sale:
+    sale = Sale.objects.select_for_update().prefetch_related("items__product").get(id=sale_id)
+
+    if sale.status == Sale.Status.VOIDED:
+        raise AlreadyVoided("Sale already voided.")
+
+    # reverse stock using movements (signal will add back stock)
+    for item in sale.items.all():
+        StockMovement.objects.create(
+            product=item.product,
+            movement_type=StockMovement.MovementType.VOID,
+            direction=StockMovement.Direction.IN,
+            quantity=item.quantity,
+            created_by=voided_by,
+            sale=sale,
+            notes=notes or f"Void Sale #{sale.id}",
+        )
+
+    sale.status = Sale.Status.VOIDED
+    sale.save(update_fields=["status"])
+
+    # Notify owners (optional)
+    owner_users = voided_by.__class__.objects.filter(profile__role="OWNER", is_active=True)
+    for owner in owner_users:
+        Notification.objects.create(
+            recipient=owner,
+            type=Notification.Type.SALE_VOIDED if hasattr(Notification.Type, "SALE_VOIDED") else Notification.Type.SALE_MADE,
+            message=f"Sale #{sale.id} voided.",
+            sale_id=sale.id,
+        )
 
     return sale
