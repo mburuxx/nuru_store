@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'inventory',
     'sales',
     'notifications',
+    'dashboard',
 
     'rest_framework',
     'corsheaders',

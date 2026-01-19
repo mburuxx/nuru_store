@@ -8,16 +8,8 @@ from notifications.models import Notification
 from .models import Sale, SaleItem, Receipt
 from .utils import generate_receipt_number
 
-
 class InsufficientStock(Exception):
     pass
-
-
-def _is_low_stock(inv: Inventory) -> bool:
-    if inv.reorder_level is not None:
-        return inv.quantity <= inv.reorder_level
-    return inv.quantity <= 0
-
 
 @transaction.atomic
 def create_sale(*, cashier, payment_method: str, items: list[dict], receipt_prefix="RCPT") -> Sale:
