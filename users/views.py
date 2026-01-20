@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserProfile
 from .serializers import ProfileSerializer, RegisterSerializer, MeSerializer, ChangePasswordSerializer
-
+from .utils import ensure_profile
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
@@ -32,8 +32,7 @@ class ProfileView(generics.RetrieveAPIView):
     serializer_class = ProfileSerializer
 
     def get_object(self):
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-        return profile
+        return ensure_profile(self.request.user)
 
 
 class LogoutView(APIView):
@@ -64,8 +63,7 @@ class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = MeSerializer
 
     def get_object(self):
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-        return profile
+        return ensure_profile(self.request.user)
     
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]

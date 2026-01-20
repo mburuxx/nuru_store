@@ -8,7 +8,7 @@ export default function RequireAuth({ allowRoles }) {
   if (loading) return <div className="p-6">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
 
-  if (allowRoles?.length && !allowRoles.includes(user.role)) {
+  if (allowRoles?.length && !(user.is_superuser || allowRoles.includes(user.role))) {
     return <Navigate to="/unauthorized" replace />;
   }
 

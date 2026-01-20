@@ -13,7 +13,9 @@ function HomeRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <div className="p-6">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  return user.role === "OWNER" ? <Navigate to="/owner" replace /> : <Navigate to="/cashier" replace />;
+    return (user.is_superuser || user.role === "OWNER")
+      ? <Navigate to="/owner" replace />
+      : <Navigate to="/cashier" replace />;
 }
 
 export default function App() {

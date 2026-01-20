@@ -22,9 +22,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <form onSubmit={onSubmit} className="w-full max-w-sm bg-white rounded-2xl shadow p-6">
-        <div className="text-sm text-gray-600 mt-3">
-          No account? <a className="underline" href="/register">Register</a>
-        </div>
 
         <h1 className="text-2xl font-semibold">Sign in</h1>
         <p className="text-sm text-gray-500 mt-1">Cashier / Owner</p>
@@ -56,6 +53,9 @@ export default function LoginPage() {
           <button className="w-full rounded-xl bg-black text-white py-3 font-medium">
             Login
           </button>
+          <div className="text-sm text-gray-600 mt-3">
+            No account? <a className="underline" href="/register">Register</a>
+          </div>
         </div>
       </form>
     </div>
