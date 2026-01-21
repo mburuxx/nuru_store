@@ -27,9 +27,14 @@ class InventoryListAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = Inventory.objects.select_related("product").order_by("-updated_at")
+        
         low_stock = self.request.query_params.get("low_stock")
+        out_of_stock = self.request.query_params.get("out_of_stock")
+
         if low_stock in ("1", "true", "True"):
             qs = qs.filter(low_stock_flag=True)
+        if out_of_stock in ("1", "true", "True"):
+            qs = qs.filter(quantity=0)
         return qs
 
 
