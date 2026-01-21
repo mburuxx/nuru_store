@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { api, setAuthTokens, clearAuthTokens } from "../api/client";
 
 const AuthContext = createContext(null);
@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const isAuthed = !!localStorage.getItem("access");
+  const hasAccess = !!localStorage.getItem("access");
 
   async function fetchProfile() {
     const res = await api.get("/api/users/profile/");
@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   }
 
   async function bootstrap() {
-    if (!isAuthed) {
+    if (!hasAccess) {
       setLoading(false);
       return;
     }
@@ -35,20 +35,30 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function login({ username, password }) {
-    // if your login endpoint returns refresh+access like RegisterView
     const res = await api.post("/api/users/login/", { username, password });
     setAuthTokens({ access: res.data.access, refresh: res.data.refresh });
     await fetchProfile();
   }
 
-  function logout() {
-    clearAuthTokens();
-    setUser(null);
+  async function register(form) {
+    const res = await api.post("/api/users/register/", form);
+    setAuthTokens({ access: res.data.access, refresh: res.data.refresh });
+    await fetchProfile();
   }
 
-  const value = { user, loading, login, logout, isAuthed: !!user };
+  async function logout() {
+    const refresh = localStorage.getItem("refresh");
+    try {
+      if (refresh) await api.post("/api/users/logout/", { refresh });
+    } catch {
+      // ignore
+    } finally {
+      clearAuthTokens();
+      setUser(null);
+    }
+  }
 
-
+  const value = { user, loading, login, register, logout, isAuthed: !!user };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
