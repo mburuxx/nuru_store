@@ -50,12 +50,24 @@ export default function AppLayout() {
                   <div className="mt-3 text-xs font-semibold text-gray-400 px-2">CATALOG</div>
                   <NavItem to="/app/owner/catalog/categories">Categories</NavItem>
                   <NavItem to="/app/owner/catalog/products">Products</NavItem>
+
+                  <div className="mt-3 text-xs font-semibold text-gray-400 px-2">INVENTORY</div>
+                  <NavItem to="/app/owner/inventory">Inventory</NavItem>
+                  <NavItem to="/app/owner/inventory/ops">Stock Ops</NavItem>
+                  <NavItem to="/app/owner/inventory/movements">Movements</NavItem>
+
+                  <div className="mt-3 text-xs font-semibold text-gray-400 px-2">SALES</div>
+                  <NavItem to="/app/sales">Sales</NavItem>
                 </>
               ) : (
                 <>
                   <div className="mt-3 text-xs font-semibold text-gray-400 px-2">TOOLS</div>
+                  <NavItem to="/app/cashier/pos">POS</NavItem>
                   <NavItem to="/app/cashier/catalog">Catalog</NavItem>
                   <NavItem to="/app/cashier/scan">Scan SKU</NavItem>
+
+                  <div className="mt-3 text-xs font-semibold text-gray-400 px-2">SALES</div>
+                  <NavItem to="/app/sales">My Sales</NavItem>
                 </>
               )}
             </div>

@@ -21,6 +21,16 @@ import ProductFormPage from "./pages/owner/ProductFormPage";
 import CashierDashboard from "./pages/cashier/CashierDashboard";
 import CashierCatalogPage from "./pages/cashier/CashierCatalogPage";
 import ScanSkuPage from "./pages/cashier/ScanSkuPage";
+import PosPage from "./pages/cashier/PosPage";
+
+import InventoryPage from "./pages/owner/InventoryPage";
+import InventoryConfigPage from "./pages/owner/InventoryConfigPage";
+import StockMovementsPage from "./pages/owner/StockMovementsPage";
+import StockOpsPage from "./pages/owner/StockOpsPage";
+
+import SalesListPage from "./pages/common/SalesListPage";
+import SaleDetailPage from "./pages/common/SaleDetailPage";
+import ReceiptPage from "./pages/common/ReceiptPage";
 
 function AppEntry() {
   const { user, loading } = useAuth();
@@ -43,19 +53,26 @@ export default function App() {
 
           {/* entry */}
           <Route path="/" element={<AppEntry />} />
-          <Route path="/app" element={<AppEntry />} />
 
           {/* protected app */}
           <Route element={<RequireAuth allowRoles={["CASHIER", "OWNER"]} />}>
             <Route path="/app" element={<AppLayout />}>
+              <Route index element={<AppEntry />} />
+
               {/* shared */}
               <Route path="profile" element={<ProfilePage />} />
               <Route path="change-password" element={<ChangePasswordPage />} />
 
               {/* cashier */}
               <Route path="cashier" element={<CashierDashboard />} />
+              <Route path="cashier/pos" element={<PosPage />} />
               <Route path="cashier/catalog" element={<CashierCatalogPage />} />
               <Route path="cashier/scan" element={<ScanSkuPage />} />
+
+              {/* sales shared */}
+              <Route path="sales" element={<SalesListPage />} />
+              <Route path="sales/:id" element={<SaleDetailPage />} />
+              <Route path="sales/:id/receipt" element={<ReceiptPage />} />
 
               {/* owner only */}
               <Route element={<RequireAuth allowRoles={["OWNER"]} />}>
@@ -66,6 +83,11 @@ export default function App() {
                 <Route path="owner/catalog/products" element={<ProductsPage />} />
                 <Route path="owner/catalog/products/new" element={<ProductFormPage />} />
                 <Route path="owner/catalog/products/:id/edit" element={<ProductFormPage />} />
+
+                <Route path="owner/inventory" element={<InventoryPage />} />
+                <Route path="owner/inventory/ops" element={<StockOpsPage />} />
+                <Route path="owner/inventory/movements" element={<StockMovementsPage />} />
+                <Route path="owner/inventory/:id/config" element={<InventoryConfigPage />} />
               </Route>
             </Route>
           </Route>
