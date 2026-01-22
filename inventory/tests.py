@@ -14,7 +14,7 @@ User = get_user_model()
 
 
 class InventoryMinimalTests(TestCase):
-    BASE = "/api/inventory"  # change if your prefix differs
+    BASE = "/api/inventory" 
 
     def setUp(self):
         self.client = APIClient()
@@ -38,9 +38,7 @@ class InventoryMinimalTests(TestCase):
         )
         self.inv = Inventory.objects.get(product=self.product)
 
-    # -------------------------
     # Utils (unit)
-    # -------------------------
     def test_reorder_point_fallback_and_percent_ceiling(self):
         # fallback when reorder_level is None/<=0 => DEFAULT_LOW_STOCK_QTY (10)
         self.inv.reorder_level = None
@@ -69,13 +67,11 @@ class InventoryMinimalTests(TestCase):
         self.inv.save()
         self.assertFalse(is_low_stock(self.inv))
 
-    # -------------------------
     # Signals (stock application + notifications)
-    # -------------------------
     def test_stockmovement_increases_quantity_and_sets_low_stock_flag(self):
         # configure reorder so low stock threshold matters
         self.inv.reorder_level = 100
-        self.inv.reorder_threshold_percent = 10  # rp=10
+        self.inv.reorder_threshold_percent = 10 
         self.inv.quantity = 0
         self.inv.low_stock_flag = False
         self.inv.save()
@@ -119,7 +115,7 @@ class InventoryMinimalTests(TestCase):
         self.assertEqual(notifs.count(), 1)
         self.assertEqual(notifs.first().recipient, self.owner)
 
-        # Another OUT 1 => still low stock; should NOT spam another notification
+        # Another OUT 1 => still low stock;
         StockMovement.objects.create(
             product=self.product,
             movement_type=StockMovement.MovementType.SALE,
@@ -148,9 +144,7 @@ class InventoryMinimalTests(TestCase):
         self.inv.refresh_from_db()
         self.assertEqual(self.inv.quantity, 1)
 
-    # -------------------------
     # API permissions + core endpoints (integration)
-    # -------------------------
     def test_inventory_list_requires_auth_and_cashier_can_read(self):
         res = self.client.get(f"{self.BASE}/items/")
         self.assertEqual(res.status_code, 401)
@@ -289,5 +283,5 @@ class InventoryMinimalTests(TestCase):
         res = self.client.get(f"{self.BASE}/items/{self.inv.id}/")
         self.assertEqual(res.status_code, 200)
 
-        # Should now match utils.reorder_point() fallback (10)
+        # Should  match utils.reorder_point() fallback (10)
         self.assertEqual(res.data["reorder_point"], 10)
