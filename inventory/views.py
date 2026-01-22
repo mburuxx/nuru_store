@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+
 from rest_framework import generics, status
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
@@ -18,6 +20,7 @@ from .serializers import (
     StockOpBaseSerializer,
 )
 
+User = get_user_model()
 
 class InventoryListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsCashier]

@@ -2,6 +2,8 @@ from rest_framework import serializers
 from catalog.models import Product
 
 from .models import Inventory, StockMovement
+from .utils import reorder_point
+
 
 
 class ProductMiniSerializer(serializers.ModelSerializer):
@@ -27,17 +29,9 @@ class InventoryReadSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_reorder_point(self, obj):
-        """
-        Practical rule:
-        - If reorder_level is set => reorder point = ceil(reorder_level * percent / 100)
-        - Else fallback reorder point = 0 (meaning: you haven't configured reorder rules yet)
-        """
-        if obj.reorder_level is None:
-            return 0
-        # ceiling without importing math
-        return (obj.reorder_level * obj.reorder_threshold_percent + 99) // 100
 
+    def get_reorder_point(self, obj):
+        return reorder_point(obj)
 
 class InventoryUpdateSerializer(serializers.ModelSerializer):
     """
