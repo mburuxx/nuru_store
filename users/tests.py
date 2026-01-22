@@ -8,8 +8,8 @@ from users.permissions import IsOwner, IsCashier, IsOwnerOrReadOnly
 from users.serializers import RegisterSerializer, MeSerializer, ChangePasswordSerializer
 from users.utils import ensure_profile
 
+# for logging out
 try:
-    # only used for logout test
     from rest_framework_simplejwt.tokens import RefreshToken
 except Exception:
     RefreshToken = None
@@ -19,14 +19,12 @@ User = get_user_model()
 
 
 class UsersMinimalTests(TestCase):
-    BASE = "/api/users"  # change if your prefix differs
+    BASE = "/api/users"
 
     def setUp(self):
         self.client = APIClient()
 
-    # --------------------
     # Model/signal/utils
-    # --------------------
     def test_user_profile_created_by_signal(self):
         u = User.objects.create_user(username="john", password="pass1234")
         self.assertTrue(UserProfile.objects.filter(user=u).exists())
@@ -34,16 +32,13 @@ class UsersMinimalTests(TestCase):
 
     def test_ensure_profile_forces_superuser_to_owner(self):
         su = User.objects.create_superuser(username="boss", password="pass1234", email="boss@example.com")
-        # signal creates profile as CASHIER by default
         self.assertEqual(su.profile.role, UserProfile.Role.CASHIER)
 
         prof = ensure_profile(su)
         prof.refresh_from_db()
         self.assertEqual(prof.role, UserProfile.Role.OWNER)
 
-    # --------------------
-    # Permissions (unit)
-    # --------------------
+    # Permissions
     def test_permissions_owner_cashier_logic(self):
         owner = User.objects.create_user(username="owner", password="pass1234")
         owner.profile.role = UserProfile.Role.OWNER
@@ -55,7 +50,7 @@ class UsersMinimalTests(TestCase):
 
         superu = User.objects.create_superuser(username="super", password="pass1234", email="s@example.com")
 
-        class Req:  # tiny request stub
+        class Req:
             def __init__(self, user, method="GET"):
                 self.user = user
                 self.method = method
@@ -75,9 +70,7 @@ class UsersMinimalTests(TestCase):
         self.assertFalse(IsOwnerOrReadOnly().has_permission(Req(cashier, method="POST"), None))
         self.assertTrue(IsOwnerOrReadOnly().has_permission(Req(owner, method="POST"), None))
 
-    # --------------------
     # Serializers (unit)
-    # --------------------
     def test_register_serializer_forces_cashier_and_sets_phone(self):
         data = {"username": "newbie", "email": "n@example.com", "password": "pass1234", "phone": "0700"}
         s = RegisterSerializer(data=data)
@@ -103,7 +96,6 @@ class UsersMinimalTests(TestCase):
         prof = u2.profile
         s = MeSerializer(instance=prof, data={"email": "u1@example.com"}, partial=True)
         self.assertFalse(s.is_valid())
-        # serializer returns {"email": "..."} inside non_field errors OR field errors depending on how DRF nests
         self.assertTrue("email" in s.errors or "non_field_errors" in s.errors)
 
     def test_change_password_serializer_checks_old_password(self):
@@ -120,9 +112,7 @@ class UsersMinimalTests(TestCase):
         self.assertFalse(s.is_valid())
         self.assertIn("old_password", s.errors)
 
-    # --------------------
-    # API endpoints (minimal integration)
-    # --------------------
+    # API endpoints
     def test_register_view_returns_tokens(self):
         res = self.client.post(
             f"{self.BASE}/register/",
@@ -189,7 +179,6 @@ class UsersMinimalTests(TestCase):
         self.assertIn("detail", res.data)
 
     def test_logout_with_valid_refresh_token_blacklists(self):
-        # This assumes you enabled SIMPLEJWT blacklist app.
         if RefreshToken is None:
             self.skipTest("simplejwt not available in test environment")
 
@@ -201,5 +190,4 @@ class UsersMinimalTests(TestCase):
 
         # If blacklist is enabled: should be 200.
         # If blacklist is NOT enabled, token.blacklist() may error and your view returns 400.
-        # Prefer making this strict once blacklist is confirmed.
         self.assertIn(res.status_code, (200, 400))
