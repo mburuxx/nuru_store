@@ -157,7 +157,7 @@ export default function AppLayout() {
             className="flex items-center gap-3 group cursor-pointer"
             title="Go to dashboard"
           >
-            <div className="w-10 h-10 rounded-2xl bg-blue-900 text-white flex items-center justify-center font-extrabold shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-blue-950 text-white flex items-center justify-center font-extrabold shadow-sm">
               N
             </div>
             <div className="leading-tight text-left">

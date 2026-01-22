@@ -5,7 +5,7 @@ from django.dispatch import receiver
 
 from .models import Inventory, StockMovement
 from notifications.models import Notification
-from .utils import reorder_point
+from .utils import reorder_point, is_low_stock
 
 User = get_user_model()
 @receiver(post_save, sender=StockMovement)
@@ -28,7 +28,7 @@ def apply_stock_movement(sender, instance: StockMovement, created, **kwargs):
                 )
             inv.quantity -= instance.quantity
 
-        new_low_stock = _is_low_stock(inv)
+        new_low_stock = is_low_stock(inv)
         inv.low_stock_flag = new_low_stock
         inv.save(update_fields=["quantity", "low_stock_flag", "updated_at"])
 

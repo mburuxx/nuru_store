@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.permissions import IsCashier, IsOwner
+from notifications.models import Notification
+from .utils import reorder_point, is_low_stock
 
 from .models import Inventory, StockMovement
 from .serializers import (
@@ -52,6 +54,31 @@ class InventoryUpdateAPIView(generics.UpdateAPIView):
     serializer_class = InventoryUpdateSerializer
     queryset = Inventory.objects.select_related("product")
 
+    def perform_update(self, serializer):
+        inv: Inventory = self.get_object()
+
+        old_low = inv.low_stock_flag
+
+        inv = serializer.save()  # updates reorder_level + reorder_threshold_percent
+
+        # recompute based on new rules
+        inv.low_stock_flag = is_low_stock(inv)
+        inv.save(update_fields=["low_stock_flag", "updated_at"])
+
+        # notify owners only when transitioning False -> True
+        if (old_low is False) and (inv.low_stock_flag is True):
+            rp = reorder_point(inv)
+            owners = User.objects.filter(profile__role="OWNER", is_active=True)
+            for owner in owners:
+                Notification.objects.create(
+                    recipient=owner,
+                    type=Notification.Type.LOW_STOCK,
+                    message=(
+                        f"Low stock: {inv.product.name} ({inv.product.sku}). "
+                        f"Qty: {inv.quantity} (<= {rp})"
+                    ),
+                    product_id=inv.product_id,
+                )
 
 class StockMovementListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsCashier]
