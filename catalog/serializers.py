@@ -78,6 +78,10 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ["id"]
+        extra_kwargs = {
+            # Allow bulk upsert to submit existing SKUs
+            "sku": {"validators": []},
+        }
 
     def validate_sku(self, value):
         value = (value or "").strip()
