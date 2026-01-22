@@ -53,6 +53,10 @@ export default function InventoryPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+  document.title = "Inventory • NURU STORES";
+}, []);
+
   // Debounce search (small + smooth)
   useEffect(() => {
     const t = setTimeout(() => load(), 350);

@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -135,6 +136,17 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+if "test" in sys.argv:
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {"console": {"class": "logging.NullHandler"}},
+        "loggers": {
+            "django.request": {"handlers": ["console"], "level": "CRITICAL", "propagate": False},
+        },
+    }
+
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

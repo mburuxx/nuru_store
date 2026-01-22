@@ -156,6 +156,10 @@ export default function OwnerDashboard() {
     load();
   }, [load]);
 
+  useEffect(() => {
+  document.title = "Dashboard • NURU STORES";
+}, []);
+
   const trendPoints = useMemo(() => {
     const rows = trend?.data || [];
     return rows.map((r) => ({ bucket: r.bucket, revenue: Number(r.revenue || 0), count: r.count }));

@@ -30,6 +30,10 @@ export default function ProductsPage() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => {
+  document.title = "Products • NURU STORES";
+}, []);
+
+  useEffect(() => {
     const t = setTimeout(() => load(), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

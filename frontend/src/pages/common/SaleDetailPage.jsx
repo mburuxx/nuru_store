@@ -34,6 +34,10 @@ export default function SaleDetailPage() {
   }
 
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+  document.title = `Sale #${id} • NURU STORES`;
+}, [id]);
+
 
   async function onVoid() {
     if (!isOwner) return;
