@@ -40,6 +40,7 @@ class ProductReadSerializer(serializers.ModelSerializer):
             "category",
             "created_at",
             "updated_at",
+            "is_active"
         ]
 
     def _is_owner(self, request):
