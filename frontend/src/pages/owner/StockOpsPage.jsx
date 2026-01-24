@@ -28,6 +28,10 @@ export default function StockOpsPage() {
   const [ok, setOk] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // new prices
+  const [newCost, setNewCost] = useState("");
+  const [newSell, setNewSell] = useState("");
+
   // debounce search
   useEffect(() => {
     const s = q.trim();
@@ -105,7 +109,12 @@ export default function StockOpsPage() {
     try {
       const payload = { sku: s, quantity: n, notes };
 
-      if (op === "supply") await inventoryApi.supply(payload);
+      if (op === "supply") {
+        const c = newCost.trim();
+        const sp = newSell.trim();
+          if (c) payload.new_cost_price = Number(c);
+          if (sp) payload.new_selling_price = Number(sp);
+      }
       if (op === "return") await inventoryApi.ret(payload);
       if (op === "adjust") await inventoryApi.adjust({ ...payload, direction });
 
@@ -117,8 +126,11 @@ export default function StockOpsPage() {
         setSelected(fresh.data);
       } catch {}
 
+      // clear fields
       setQty("");
       setNotes("");
+      setNewCost("");
+      setNewSell("");
     } catch (e2) {
       // DRF sometimes returns {detail: "..."} or field errors
       const data = e2?.response?.data;
@@ -241,6 +253,21 @@ export default function StockOpsPage() {
             }}
             placeholder="e.g. 10"
           />
+
+          <Input
+            label="New cost price"
+            value={newCost}
+            onChange={(e) => setNewCost(e.target.value)}
+            placeholder="e.g. 1200"
+          />
+
+          <Input
+            label="New selling price"
+            value={newSell}
+            onChange={(e) => setNewSell(e.target.value)}
+            placeholder="e.g. 1200"
+          />
+          
           <Input
             label="Notes (optional)"
             value={notes}

@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from rest_framework import generics, status
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -121,14 +122,37 @@ class SupplyStockAPIView(APIView):
         qty = s.validated_data["quantity"]
         notes = s.validated_data.get("notes", "")
 
-        StockMovement.objects.create(
+        new_cost = s.validated_data.get("new_cp", None)
+        new_sell = s.validated_data.get("new_sp", None)
+
+        with transaction.atomic():
+            # 1) record movement (triggers post_save to apply quantity)
+            StockMovement.objects.create(
             product=product,
             movement_type=StockMovement.MovementType.SUPPLY,
             direction=StockMovement.Direction.IN,
             quantity=qty,
             created_by=request.user,
             notes=notes,
-        )
+            unit_cost=new_cost,
+            unit_sp=new_sell,
+            )
+
+
+        # 2) update Product "current prices" if supplied
+        updates = []
+        if new_cost is not None:
+            product.cost_price = new_cost
+            updates.append("cost_price")
+        if new_sell is not None:
+            product.selling_price = new_sell
+            updates.append("selling_price")
+
+
+        if updates:
+            product.save(update_fields=updates)
+
+
         return Response({"message": "Supply recorded."}, status=status.HTTP_201_CREATED)
 
 

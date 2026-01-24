@@ -9,7 +9,7 @@ from .utils import reorder_point
 class ProductMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ["id", "name", "sku", "selling_price", "is_active"]
+        fields = ["id", "name", "sku", "cost_price", "selling_price", "is_active"]
 
 
 class InventoryReadSerializer(serializers.ModelSerializer):
@@ -71,6 +71,9 @@ class StockOpBaseSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
     notes = serializers.CharField(required=False, allow_blank=True)
 
+    new_cp = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    new_sp = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+
     def validate(self, attrs):
         sku = attrs.get("sku")
         product_id = attrs.get("product_id")
@@ -96,6 +99,16 @@ class StockOpBaseSerializer(serializers.Serializer):
             raise serializers.ValidationError("Product is inactive.")
 
         attrs["product"] = product
+
+        if "new_cp" in attrs and attrs["new_cp"] is not None:
+            if attrs["new_cp"] < 0:
+                raise serializers.ValidationError({"new_cp": "Must be >= 0."})
+
+
+            if "new_sp" in attrs and attrs["new_sp"] is not None:
+                if attrs["new_sp"] < 0:
+                    raise serializers.ValidationError({"new_sp": "Must be >= 0."})
+        
         return attrs
 
 
