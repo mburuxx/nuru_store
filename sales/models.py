@@ -16,17 +16,36 @@ class Sale(models.Model):
         CARD = "CARD", "Card"
         BANK = "BANK", "Bank"
 
+    class PaymentType(models.TextChoices):
+        PAY_NOW = "PAY_NOW", "Pay Now"
+        CREDIT = "CREDIT", "Credit"
+
+    class PaymentStatus(models.TextChoices):
+        PAID = "PAID", "Paid"
+        UNPAID = "UNPAID", "Unpaid"
+        PARTIAL = "PARTIAL", "Partial"
+
     cashier = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="sales",
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.COMPLETED)
-    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+
+    payment_type = models.CharField(max_length=20, choices=PaymentType.choices, default=PaymentType.PAY_NOW)
+    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PAID)
+
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, null=True, blank=True)
 
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    due_date = models.DateField(null=True, blank=True)
+
+    customer_name = models.CharField(max_length=120, blank=True)
+    customer_phone = models.CharField(max_length=30, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -55,3 +74,39 @@ class Receipt(models.Model):
 
     def __str__(self):
         return self.receipt_number
+    
+class Invoice(models.Model):
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Open"
+        PAID = "PAID", "Paid"
+        OVERDUE = "OVERDUE", "Overdue"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    sale = models.OneToOneField(Sale, on_delete=models.CASCADE, related_name="invoice")
+    invoice_number = models.CharField(max_length=40, unique=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+
+    due_date = models.DateField()
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.invoice_number
+
+
+class Payment(models.Model):
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="payments")
+    method = models.CharField(max_length=20, choices=Sale.PaymentMethod.choices)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
+
+    reference = models.CharField(max_length=60, blank=True)  # mpesa code / bank ref
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="received_payments",
+    )
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_at"]
