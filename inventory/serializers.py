@@ -105,9 +105,9 @@ class StockOpBaseSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"new_cp": "Must be >= 0."})
 
 
-            if "new_sp" in attrs and attrs["new_sp"] is not None:
-                if attrs["new_sp"] < 0:
-                    raise serializers.ValidationError({"new_sp": "Must be >= 0."})
+        if "new_sp" in attrs and attrs["new_sp"] is not None:
+            if attrs["new_sp"] < 0:
+                raise serializers.ValidationError({"new_sp": "Must be >= 0."})
         
         return attrs
 

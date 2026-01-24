@@ -112,8 +112,11 @@ export default function StockOpsPage() {
       if (op === "supply") {
         const c = newCost.trim();
         const sp = newSell.trim();
-          if (c) payload.new_cost_price = Number(c);
-          if (sp) payload.new_selling_price = Number(sp);
+        
+        if (c) payload.new_cp = Number(c);
+        if (sp) payload.new_sp = Number(sp);
+
+        await inventoryApi.supply(payload)
       }
       if (op === "return") await inventoryApi.ret(payload);
       if (op === "adjust") await inventoryApi.adjust({ ...payload, direction });
@@ -132,7 +135,6 @@ export default function StockOpsPage() {
       setNewCost("");
       setNewSell("");
     } catch (e2) {
-      // DRF sometimes returns {detail: "..."} or field errors
       const data = e2?.response?.data;
       setErr(data?.detail || data?.sku?.[0] || data?.product_id?.[0] || e2?.message || "Failed.");
     } finally {
