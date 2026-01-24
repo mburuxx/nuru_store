@@ -20,7 +20,7 @@ class CatalogMinimalTests(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-        # users
+        
         self.cashier = User.objects.create_user(username="cash", password="pass1234")
         self.cashier.profile.role = UserProfile.Role.CASHIER
         self.cashier.profile.save()
@@ -33,7 +33,7 @@ class CatalogMinimalTests(TestCase):
             username="boss", password="pass1234", email="boss@example.com"
         )
 
-    # Category model (slugging)
+    
     def test_category_slug_autogenerates_and_uniquifies(self):
         c1 = Category.objects.create(name="Office Supplies")
         self.assertEqual(c1.slug, "office-supplies")
@@ -45,7 +45,7 @@ class CatalogMinimalTests(TestCase):
             with transaction.atomic():
                 Category.objects.create(name="Office Supplies")
 
-    # Category API behaviors
+    
     def test_category_permissions_cashier_cannot_create_owner_can(self):
         payload = {"name": "Electronics", "parent": None, "is_active": True}
 
@@ -80,21 +80,21 @@ class CatalogMinimalTests(TestCase):
         child_active = Category.objects.create(name="ChildA", parent=root, is_active=True)
         Category.objects.create(name="ChildB", parent=root, is_active=False)
 
-        # any authenticated cashier can read tree
+        
         self.client.force_authenticate(user=self.cashier)
         res = self.client.get(f"{self.BASE}/categories/tree/")
         self.assertEqual(res.status_code, 200)
 
-        # should include Root, and only active child
+        
         self.assertEqual(len(res.data), 1)
         self.assertEqual(res.data[0]["name"], "Root")
         children = res.data[0]["children"]
         self.assertEqual([c["name"] for c in children], ["ChildA"])
 
-        # sanity: active child is returned
+        
         self.assertEqual(children[0]["id"], child_active.id)
 
-    # Product signals/serializers
+    
     def test_product_creation_creates_inventory_and_quantity_defaults(self):
         p = Product.objects.create(
             name="Mouse",
@@ -107,7 +107,7 @@ class CatalogMinimalTests(TestCase):
         self.assertIsNotNone(inv)
         self.assertEqual(inv.quantity, 0)
 
-        # Ensure API returns quantity field and default 0
+        
         self.client.force_authenticate(user=self.cashier)
         res = self.client.get(f"{self.BASE}/products/{p.id}/")
         self.assertEqual(res.status_code, 200)
@@ -137,7 +137,7 @@ class CatalogMinimalTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(Decimal(res.data["cost_price"]), Decimal("800.00"))
 
-    # Product API behaviors
+    
     def test_products_list_default_active_only_for_cashier(self):
         Product.objects.create(
             name="ActiveP",
@@ -190,7 +190,7 @@ class CatalogMinimalTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["sku"], "MILK1")
 
-        # cashier should not be able to fetch inactive by sku (404 due to filtered queryset)
+        
         res = self.client.get(f"{self.BASE}/products/sku/HID1/")
         self.assertEqual(res.status_code, 404)
 
@@ -200,7 +200,7 @@ class CatalogMinimalTests(TestCase):
         payload_blank = {
             "category_id": cat.id,
             "name": "Bread",
-            "sku": "   ",  # invalid
+            "sku": "   ",  
             "selling_price": "50.00",
             "cost_price": "30.00",
             "is_active": True,
@@ -219,7 +219,7 @@ class CatalogMinimalTests(TestCase):
         p = Product.objects.get(id=res.data["id"])
         self.assertEqual(p.sku, "BR-001")
 
-        # cashier cannot create
+        
         self.client.force_authenticate(user=self.cashier)
         res = self.client.post(f"{self.BASE}/products/", payload_ok, format="json")
         self.assertEqual(res.status_code, 403)
@@ -257,12 +257,10 @@ class CatalogMinimalTests(TestCase):
             ]
         }
 
-        # cashier forbidden
         self.client.force_authenticate(user=self.cashier)
         res = self.client.post(f"{self.BASE}/products/bulk/", items, format="json")
         self.assertEqual(res.status_code, 403)
 
-        # owner allowed
         self.client.force_authenticate(user=self.owner)
         res = self.client.post(f"{self.BASE}/products/bulk/", items, format="json")
         self.assertEqual(res.status_code, 200)
@@ -274,5 +272,4 @@ class CatalogMinimalTests(TestCase):
         self.assertEqual(existing.selling_price, Decimal("12.00"))
 
         created = Product.objects.get(sku="B-002")
-        # inventory should be created by signal
         self.assertTrue(Inventory.objects.filter(product=created).exists())

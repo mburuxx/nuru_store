@@ -35,8 +35,7 @@ class ProductReadSerializer(serializers.ModelSerializer):
             "name",
             "sku",
             "selling_price",
-            "cost_price",      # shown only to OWNER/superuser
-            "is_active",
+            "cost_price",     
             "quantity",
             "category",
             "created_at",
@@ -61,7 +60,6 @@ class ProductReadSerializer(serializers.ModelSerializer):
 
 
 class ProductWriteSerializer(serializers.ModelSerializer):
-    # write by ID, read will be nested on ProductReadSerializer
     category_id = serializers.PrimaryKeyRelatedField(
         source="category", queryset=Category.objects.all(), required=False, allow_null=True
     )
@@ -79,7 +77,6 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
         extra_kwargs = {
-            # Allow bulk upsert to submit existing SKUs
             "sku": {"validators": []},
         }
 
@@ -99,9 +96,7 @@ class ProductBulkUpsertSerializer(serializers.Serializer):
     items = ProductWriteSerializer(many=True)
 
     def create(self, validated_data):
-        # Not used
         return validated_data
 
     def update(self, instance, validated_data):
-        # Not used
         return validated_data

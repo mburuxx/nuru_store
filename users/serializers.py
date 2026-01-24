@@ -27,9 +27,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        # Profile is created by your signal, but we update it safely here
         profile, _ = UserProfile.objects.get_or_create(user=user)
-        profile.role = UserProfile.Role.CASHIER  # force cashier on signup
+        profile.role = UserProfile.Role.CASHIER 
         profile.phone = phone
         profile.save()
 
@@ -83,7 +82,6 @@ class MeSerializer(serializers.ModelSerializer):
 
 
     def validate(self, attrs):
-        # validate email uniqueness if provided
         user_data = attrs.get("user", {})
         email = user_data.get("email")
         if email is not None:

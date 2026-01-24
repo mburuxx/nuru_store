@@ -1,7 +1,7 @@
 import { api } from "./client";
 
 export const dashboardApi = {
-  // Owner endpoints
+  
   summary(params = {}) {
     return api.get("/api/dashboard/summary/", { params });
   },
@@ -21,7 +21,7 @@ export const dashboardApi = {
     return api.get("/api/dashboard/recent-activity/");
   },
 
-  // Cashier endpoints
+  
   cashierSummary(params = {}) {
     return api.get("/api/dashboard/cashier/summary/", { params });
   },

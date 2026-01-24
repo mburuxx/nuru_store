@@ -13,21 +13,18 @@ class SaleCreateSerializer(serializers.Serializer):
         default=Sale.PaymentType.PAY_NOW
     )
 
-    # Required for PAY_NOW; for CREDIT only required when amount_paid > 0
     payment_method = serializers.ChoiceField(
         choices=Sale.PaymentMethod.choices,
         required=False,
         allow_null=True
     )
 
-    # For CREDIT can be 0, or partial pay now
     amount_paid = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
         required=False
     )
 
-    # Required for CREDIT
     due_date = serializers.DateField(required=False)
 
     customer_name = serializers.CharField(required=False, allow_blank=True)
@@ -42,23 +39,21 @@ class SaleCreateSerializer(serializers.Serializer):
 
         amount_paid = attrs.get("amount_paid", None)
 
-        # CREDIT: default amount_paid=0.00 if not provided
         if amount_paid is None and ptype == Sale.PaymentType.CREDIT:
             amount_paid = Decimal("0.00")
             attrs["amount_paid"] = amount_paid
 
-        # CREDIT requires due_date
         if ptype == Sale.PaymentType.CREDIT and not due_date:
             raise serializers.ValidationError({"due_date": "Due date is required for credit sales."})
 
-        # If amount_paid > 0 => payment_method required (applies to CREDIT partial pay)
         if amount_paid is not None and amount_paid > Decimal("0.00") and not method:
             raise serializers.ValidationError({"payment_method": "Payment method is required when amount_paid > 0."})
 
-        # PAY_NOW requires payment_method
         if ptype == Sale.PaymentType.PAY_NOW and not method:
             raise serializers.ValidationError({"payment_method": "This field is required for Pay Now sales."})
 
+        if amount_paid is not None and amount_paid < Decimal("0.00"):
+            raise serializers.ValidationError({"amount_paid": "Must be >= 0."})
         return attrs
 
 class SaleItemSerializer(serializers.ModelSerializer):
@@ -123,7 +118,6 @@ class SaleDetailSerializer(serializers.ModelSerializer):
         return str(max(Decimal("0.00"), obj.total - obj.amount_paid))
 
     def get_document_type(self, obj):
-        # invoice for unpaid/partial; receipt for paid
         if obj.payment_status in (Sale.PaymentStatus.UNPAID, Sale.PaymentStatus.PARTIAL):
             return "INVOICE"
         return "RECEIPT"

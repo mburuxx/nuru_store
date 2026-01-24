@@ -2,7 +2,7 @@ import { api } from "./client";
 
 export const notificationsApi = {
   list(params = {}) {
-    // params: { unread, type }
+    
     return api.get("/api/notifications/", { params });
   },
   unreadCount() {

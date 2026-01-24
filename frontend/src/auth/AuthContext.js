@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     bootstrap();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
   async function login({ username, password }) {
@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
     try {
       if (refresh) await api.post("/api/users/logout/", { refresh });
     } catch {
-      // ignore
+      
     } finally {
       clearAuthTokens();
       setUser(null);

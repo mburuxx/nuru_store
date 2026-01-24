@@ -4,8 +4,6 @@ from catalog.models import Product
 from .models import Inventory, StockMovement
 from .utils import reorder_point
 
-
-
 class ProductMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
@@ -114,9 +112,6 @@ class StockOpBaseSerializer(serializers.Serializer):
 
 class StockAdjustSerializer(StockOpBaseSerializer):
     direction = serializers.ChoiceField(choices=StockMovement.Direction.choices)
-
-    # movement_type is fixed in the view: ADJUSTMENT
-
 
 class SetReorderSerializer(serializers.Serializer):
     sku = serializers.CharField(required=False)

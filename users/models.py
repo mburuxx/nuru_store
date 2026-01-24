@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 
+# create profile for a user
 class UserProfile(models.Model):
     class Role(models.TextChoices):
         OWNER = "OWNER", "Owner"

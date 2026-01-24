@@ -1,4 +1,3 @@
-# inventory/utils.py
 from .models import Inventory
 
 
@@ -18,7 +17,6 @@ def reorder_point(inv: Inventory) -> int:
     level = inv.reorder_level
     percent = inv.reorder_threshold_percent
 
-    # Fallback: simple rule (qty <= 10)
     if level is None or level <= 0:
         return DEFAULT_LOW_STOCK_QTY
 
@@ -28,13 +26,11 @@ def reorder_point(inv: Inventory) -> int:
     except (TypeError, ValueError):
         return DEFAULT_LOW_STOCK_QTY
 
-    # Guardrails
     if percent < 1:
         percent = 1
     if percent > 100:
         percent = 100
 
-    # Ceil(level * percent / 100)
     return (level * percent + 99) // 100
 
 

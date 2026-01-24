@@ -32,7 +32,6 @@ export default function CategoriesPage() {
   useEffect(() => {
     const t = setTimeout(() => load(), 350);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
   async function toggleActive(c) {

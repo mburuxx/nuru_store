@@ -58,7 +58,6 @@ export default function Unauthorized() {
         />
 
         <CardBody>
-          {/* Icon + message */}
           <div className="flex items-start gap-4 mb-6">
             <div className="shrink-0">
               <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
@@ -75,10 +74,8 @@ export default function Unauthorized() {
             </div>
           </div>
 
-          {/* Divider */}
           <div className="border-t border-gray-100 my-4" />
 
-          {/* Redirect status */}
           <div className="flex items-center justify-between text-sm">
             <div className="text-gray-600">
               Redirecting to login in{" "}

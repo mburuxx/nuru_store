@@ -1,4 +1,3 @@
-// src/layouts/AppLayout.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -80,7 +79,7 @@ export default function AppLayout() {
       const res = await notificationsApi.unreadCount();
       setUnread(res.data?.unread_count ?? 0);
     } catch {
-      // ignore
+      
     }
   }, []);
 
@@ -90,7 +89,7 @@ export default function AppLayout() {
     return () => clearInterval(t);
   }, [loadUnread]);
 
-  // Role-based nav items (horizontal)
+  
   const tabs = useMemo(() => {
     if (isOwner) {
       return [
@@ -111,7 +110,7 @@ export default function AppLayout() {
     ];
   }, [isOwner]);
 
-  // Account dropdown
+  
   const [acctOpen, setAcctOpen] = useState(false);
   const acctRef = useRef(null);
 

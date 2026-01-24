@@ -9,30 +9,30 @@ import Badge from "../../components/ui/Badge";
 import Loader from "../../components/ui/Loader";
 
 export default function StockOpsPage() {
-  // selection
+  
   const [sku, setSku] = useState("");
-  const [selected, setSelected] = useState(null); // product object (from ProductReadSerializer)
+  const [selected, setSelected] = useState(null); 
 
-  // search
+  
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
 
-  // operation inputs
+  
   const [qty, setQty] = useState("");
   const [notes, setNotes] = useState("");
   const [direction, setDirection] = useState("IN");
 
-  // status
+  
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // new prices
+  
   const [newCost, setNewCost] = useState("");
   const [newSell, setNewSell] = useState("");
 
-  // debounce search
+  
   useEffect(() => {
     const s = q.trim();
     if (!s) {
@@ -56,7 +56,7 @@ export default function StockOpsPage() {
     return () => clearTimeout(t);
   }, [q]);
 
-  // if user types SKU directly, fetch product details (so we can show name/category)
+  
   useEffect(() => {
     const s = sku.trim();
     if (!s) {
@@ -69,7 +69,7 @@ export default function StockOpsPage() {
         const res = await catalogApi.getBySku(s);
         setSelected(res.data);
       } catch {
-        // keep selected null; we'll show a warning below
+        
         setSelected(null);
       }
     }, 250);
@@ -123,13 +123,13 @@ export default function StockOpsPage() {
 
       setOk("Recorded ✅");
 
-      // refresh selected product so quantity updates on screen
+      
       try {
         const fresh = await catalogApi.getBySku(s);
         setSelected(fresh.data);
       } catch {}
 
-      // clear fields
+      
       setQty("");
       setNotes("");
       setNewCost("");
@@ -161,7 +161,6 @@ export default function StockOpsPage() {
         }
       />
       <CardBody>
-        {/* Search + select */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
           <div className="rounded-2xl border border-gray-100 bg-white p-4">
             <Input
@@ -203,7 +202,6 @@ export default function StockOpsPage() {
             </div>
           </div>
 
-          {/* SKU + info */}
           <div className="rounded-2xl border border-gray-100 bg-white p-4">
             <Input
               label="SKU (quick entry)"
@@ -302,7 +300,6 @@ export default function StockOpsPage() {
           </Button>
         </div>
 
-        {/* Guidance */}
         <div className="mt-6 text-sm text-gray-600">
           <div className="font-medium text-gray-900">How receiving works in your app:</div>
           <ul className="list-disc ml-5 mt-2 space-y-1">

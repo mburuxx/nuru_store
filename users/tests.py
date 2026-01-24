@@ -8,7 +8,6 @@ from users.permissions import IsOwner, IsCashier, IsOwnerOrReadOnly
 from users.serializers import RegisterSerializer, MeSerializer, ChangePasswordSerializer
 from users.utils import ensure_profile
 
-# for logging out
 try:
     from rest_framework_simplejwt.tokens import RefreshToken
 except Exception:

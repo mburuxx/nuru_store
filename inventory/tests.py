@@ -19,7 +19,6 @@ class InventoryMinimalTests(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-        # users
         self.cashier = User.objects.create_user(username="cash", password="pass1234")
         self.cashier.profile.role = UserProfile.Role.CASHIER
         self.cashier.profile.save()
@@ -28,7 +27,6 @@ class InventoryMinimalTests(TestCase):
         self.owner.profile.role = UserProfile.Role.OWNER
         self.owner.profile.save()
 
-        # product (catalog signal should create inventory)
         self.product = Product.objects.create(
             name="Milk",
             sku="MILK-1",
@@ -38,9 +36,7 @@ class InventoryMinimalTests(TestCase):
         )
         self.inv = Inventory.objects.get(product=self.product)
 
-    # Utils (unit)
     def test_reorder_point_fallback_and_percent_ceiling(self):
-        # fallback when reorder_level is None/<=0 => DEFAULT_LOW_STOCK_QTY (10)
         self.inv.reorder_level = None
         self.inv.reorder_threshold_percent = 10
         self.inv.save()
@@ -50,7 +46,6 @@ class InventoryMinimalTests(TestCase):
         self.inv.save()
         self.assertEqual(reorder_point(self.inv), 10)
 
-        # ceiling math: level=95 percent=10 => 9.5 => 10
         self.inv.reorder_level = 95
         self.inv.reorder_threshold_percent = 10
         self.inv.save()
@@ -67,9 +62,7 @@ class InventoryMinimalTests(TestCase):
         self.inv.save()
         self.assertFalse(is_low_stock(self.inv))
 
-    # Signals (stock application + notifications)
     def test_stockmovement_increases_quantity_and_sets_low_stock_flag(self):
-        # configure reorder so low stock threshold matters
         self.inv.reorder_level = 100
         self.inv.reorder_threshold_percent = 10 
         self.inv.quantity = 0
@@ -89,7 +82,6 @@ class InventoryMinimalTests(TestCase):
         self.assertFalse(self.inv.low_stock_flag)
 
     def test_stockmovement_decreases_quantity_and_notifies_once_on_transition(self):
-        # setup: rp=10
         self.inv.reorder_level = 100
         self.inv.reorder_threshold_percent = 10
         self.inv.quantity = 12
@@ -98,7 +90,6 @@ class InventoryMinimalTests(TestCase):
 
         Notification.objects.all().delete()
 
-        # OUT 3 => 9 (crosses into low stock) => should notify owners once
         StockMovement.objects.create(
             product=self.product,
             movement_type=StockMovement.MovementType.SALE,
@@ -115,7 +106,6 @@ class InventoryMinimalTests(TestCase):
         self.assertEqual(notifs.count(), 1)
         self.assertEqual(notifs.first().recipient, self.owner)
 
-        # Another OUT 1 => still low stock;
         StockMovement.objects.create(
             product=self.product,
             movement_type=StockMovement.MovementType.SALE,
@@ -144,7 +134,6 @@ class InventoryMinimalTests(TestCase):
         self.inv.refresh_from_db()
         self.assertEqual(self.inv.quantity, 1)
 
-    # API permissions + core endpoints (integration)
     def test_inventory_list_requires_auth_and_cashier_can_read(self):
         res = self.client.get(f"{self.BASE}/items/")
         self.assertEqual(res.status_code, 401)
@@ -154,9 +143,8 @@ class InventoryMinimalTests(TestCase):
         self.assertEqual(res.status_code, 200)
 
     def test_inventory_list_filters_low_stock_and_out_of_stock(self):
-        # Make it low stock and out of stock
         self.inv.reorder_level = 100
-        self.inv.reorder_threshold_percent = 10  # rp=10
+        self.inv.reorder_threshold_percent = 10  
         self.inv.quantity = 0
         self.inv.low_stock_flag = True
         self.inv.save()
@@ -237,7 +225,6 @@ class InventoryMinimalTests(TestCase):
         self.assertTrue(self.inv.low_stock_flag)
     
     def test_inventory_config_owner_only_recomputes_low_stock_and_notifies_once(self):
-        # Start: qty high enough not low (with rp=10 fallback rules, but we'll set explicit reorder)
         self.inv.quantity = 15
         self.inv.low_stock_flag = False
         self.inv.reorder_level = None
@@ -247,14 +234,12 @@ class InventoryMinimalTests(TestCase):
         Notification.objects.all().delete()
 
         url = f"{self.BASE}/items/{self.inv.id}/config/"
-        payload = {"reorder_level": 100, "reorder_threshold_percent": 20}  # rp=ceil(100*20%)=20
+        payload = {"reorder_level": 100, "reorder_threshold_percent": 20}  
 
-        # Cashier cannot update config
         self.client.force_authenticate(user=self.cashier)
         res = self.client.patch(url, payload, format="json")
         self.assertEqual(res.status_code, 403)
 
-        # Owner updates: qty=15 <= rp=20 => low_stock_flag becomes True and notification created
         self.client.force_authenticate(user=self.owner)
         res = self.client.patch(url, payload, format="json")
         self.assertEqual(res.status_code, 200)
@@ -266,7 +251,6 @@ class InventoryMinimalTests(TestCase):
         self.assertEqual(notifs.count(), 1)
         self.assertEqual(notifs.first().recipient, self.owner)
 
-        # Patch again with same values: still low, should NOT spam another notification
         res = self.client.patch(url, payload, format="json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(
@@ -274,7 +258,6 @@ class InventoryMinimalTests(TestCase):
             1,
         )
     def test_inventory_read_serializer_reorder_point_matches_utils_fallback(self):
-        # Ensure reorder_level unset triggers fallback rule (10)
         self.inv.reorder_level = None
         self.inv.reorder_threshold_percent = 10
         self.inv.save()
@@ -283,5 +266,4 @@ class InventoryMinimalTests(TestCase):
         res = self.client.get(f"{self.BASE}/items/{self.inv.id}/")
         self.assertEqual(res.status_code, 200)
 
-        # Should  match utils.reorder_point() fallback (10)
         self.assertEqual(res.data["reorder_point"], 10)

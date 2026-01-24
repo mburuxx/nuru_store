@@ -17,12 +17,10 @@ User = get_user_model()
 
 
 class SalesMinimalTests(TestCase):
-    BASE = "/api/sales"  # change if your prefix differs
-
+    BASE = "/api/sales" 
     def setUp(self):
         self.client = APIClient()
 
-        # users
         self.cashier1 = User.objects.create_user(username="cash1", password="pass1234")
         self.cashier1.profile.role = UserProfile.Role.CASHIER
         self.cashier1.profile.save()
@@ -35,7 +33,6 @@ class SalesMinimalTests(TestCase):
         self.owner.profile.role = UserProfile.Role.OWNER
         self.owner.profile.save()
 
-        # product + inventory (catalog signal creates Inventory)
         self.product = Product.objects.create(
             name="Milk",
             sku="MILK-1",
@@ -45,7 +42,6 @@ class SalesMinimalTests(TestCase):
         )
         self.inv = Inventory.objects.get(product=self.product)
 
-        # seed stock using movement (inventory signal applies quantity)
         StockMovement.objects.create(
             product=self.product,
             movement_type=StockMovement.MovementType.SUPPLY,
@@ -57,9 +53,7 @@ class SalesMinimalTests(TestCase):
         self.inv.refresh_from_db()
         self.assertEqual(self.inv.quantity, 50)
 
-    # -------------------------
-    # Services (core correctness)
-    # -------------------------
+
     def test_create_sale_deducts_stock_creates_items_receipt_and_owner_notification(self):
         Notification.objects.all().delete()
 
@@ -72,20 +66,16 @@ class SalesMinimalTests(TestCase):
         sale.refresh_from_db()
         self.inv.refresh_from_db()
 
-        # Stock deducted via StockMovement + inventory signal
         self.assertEqual(self.inv.quantity, 48)
 
-        # Totals correct
         self.assertEqual(sale.subtotal, Decimal("120.00"))
         self.assertEqual(sale.total, Decimal("120.00"))
         self.assertEqual(sale.status, Sale.Status.COMPLETED)
 
-        # Items + receipt exist
+     
         self.assertEqual(sale.items.count(), 1)
         self.assertTrue(hasattr(sale, "receipt"))
-        self.assertTrue(sale.receipt.receipt_number)  # format tested elsewhere if needed
-
-        # Owner notified sale made
+        self.assertTrue(sale.receipt.receipt_number)  
         notifs = Notification.objects.filter(type=Notification.Type.SALE_MADE, sale_id=sale.id)
         self.assertEqual(notifs.count(), 1)
         self.assertEqual(notifs.first().recipient, self.owner)
@@ -117,13 +107,9 @@ class SalesMinimalTests(TestCase):
         self.assertEqual(sale.status, Sale.Status.VOIDED)
         self.assertEqual(self.inv.quantity, 50)  # restored
 
-        # Second void should be rejected
         with self.assertRaises(AlreadyVoided):
             void_sale(sale_id=sale.id, voided_by=self.owner)
 
-    # -------------------------
-    # API (permissions + main flows)
-    # -------------------------
     def test_sale_create_api_cashier_allowed_returns_201_and_deducts_stock(self):
         self.client.force_authenticate(user=self.cashier1)
 
@@ -154,7 +140,6 @@ class SalesMinimalTests(TestCase):
         self.assertIn("detail", res.data)
 
     def test_sale_void_api_owner_only(self):
-        # create a sale first
         sale = create_sale(
             cashier=self.cashier1,
             payment_method=Sale.PaymentMethod.CASH,
@@ -163,12 +148,10 @@ class SalesMinimalTests(TestCase):
         self.inv.refresh_from_db()
         self.assertEqual(self.inv.quantity, 48)
 
-        # cashier forbidden
         self.client.force_authenticate(user=self.cashier1)
         res = self.client.post(f"{self.BASE}/{sale.id}/void/", {"notes": "nope"}, format="json")
         self.assertEqual(res.status_code, 403)
 
-        # owner can void
         self.client.force_authenticate(user=self.owner)
         res = self.client.post(f"{self.BASE}/{sale.id}/void/", {"notes": "ok"}, format="json")
         self.assertEqual(res.status_code, 200)
@@ -177,12 +160,10 @@ class SalesMinimalTests(TestCase):
         self.assertEqual(self.inv.quantity, 50)
         self.assertEqual(res.data["status"], "VOIDED")
 
-        # already voided => 400
         res2 = self.client.post(f"{self.BASE}/{sale.id}/void/", {"notes": "again"}, format="json")
         self.assertEqual(res2.status_code, 400)
 
     def test_sale_list_visibility_cashier_sees_only_own_owner_sees_all(self):
-        # 2 sales by different cashiers
         s1 = create_sale(
             cashier=self.cashier1,
             payment_method=Sale.PaymentMethod.CASH,
@@ -194,7 +175,6 @@ class SalesMinimalTests(TestCase):
             items=[{"product_id": self.product.id, "quantity": 1}],
         )
 
-        # cashier1 should see only s1
         self.client.force_authenticate(user=self.cashier1)
         res = self.client.get(f"{self.BASE}/")
         self.assertEqual(res.status_code, 200)
@@ -202,7 +182,6 @@ class SalesMinimalTests(TestCase):
         self.assertIn(s1.id, ids)
         self.assertNotIn(s2.id, ids)
 
-        # owner sees both
         self.client.force_authenticate(user=self.owner)
         res = self.client.get(f"{self.BASE}/")
         self.assertEqual(res.status_code, 200)

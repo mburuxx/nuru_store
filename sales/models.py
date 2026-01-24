@@ -98,7 +98,7 @@ class Payment(models.Model):
     method = models.CharField(max_length=20, choices=Sale.PaymentMethod.choices)
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
 
-    reference = models.CharField(max_length=60, blank=True)  # mpesa code / bank ref
+    reference = models.CharField(max_length=60, blank=True)
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

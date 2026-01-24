@@ -38,7 +38,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        # default: only active for non-owners
         user = self.request.user
         is_owner = user.is_superuser or getattr(getattr(user, "profile", None), "role", None) == "OWNER"
 
@@ -102,7 +101,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Product.objects.select_related("category","inventory")
 
-        # Default: cashiers see only active products unless explicitly asked otherwise
         user = self.request.user
         is_owner = user.is_superuser or getattr(getattr(user, "profile", None), "role", None) == "OWNER"
 
@@ -170,7 +168,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             for item in items:
-                # item already validated by ProductWriteSerializer
                 sku = item["sku"]
                 defaults = {
                     "name": item.get("name"),

@@ -1,4 +1,4 @@
-// frontend/src/pages/cashier/PosPage.jsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { catalogApi } from "../../api/catalog";
@@ -14,15 +14,15 @@ export default function PosPage() {
   const nav = useNavigate();
 
   const [sku, setSku] = useState("");
-  const [cart, setCart] = useState([]); // {product, quantity:number}
+  const [cart, setCart] = useState([]); 
 
-  // payment controls
-  const [paymentType, setPaymentType] = useState("PAY_NOW"); // PAY_NOW | CREDIT
-  const [payment_method, setPaymentMethod] = useState("CASH"); // CASH | MPESA | CARD | BANK
-  const [amountPaid, setAmountPaid] = useState(""); // optional for CREDIT (partial pay)
-  const [dueDate, setDueDate] = useState(""); // required for CREDIT
+  
+  const [paymentType, setPaymentType] = useState("PAY_NOW"); 
+  const [payment_method, setPaymentMethod] = useState("CASH"); 
+  const [amountPaid, setAmountPaid] = useState(""); 
+  const [dueDate, setDueDate] = useState(""); 
 
-  // optional customer details for credit
+  
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
 
@@ -30,8 +30,8 @@ export default function PosPage() {
   const [ok, setOk] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  // For safe typing: productId -> string value user is editing
-  const [qtyDraft, setQtyDraft] = useState({}); // { [productId]: "3" | "" | "12" }
+  
+  const [qtyDraft, setQtyDraft] = useState({}); 
 
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
@@ -41,7 +41,7 @@ export default function PosPage() {
     return cart.reduce((sum, row) => sum + Number(row.product.selling_price) * row.quantity, 0);
   }, [cart]);
 
-  // --- SKU add ---
+  
   async function addSku(e) {
     e.preventDefault();
     setErr("");
@@ -62,7 +62,7 @@ export default function PosPage() {
     }
   }
 
-  // --- Name search (debounced) ---
+  
   useEffect(() => {
     const q = search.trim();
     if (!q) {
@@ -109,14 +109,14 @@ export default function PosPage() {
     });
   }
 
-  // User typing: do NOT convert to number yet
+  
   function onQtyChange(productId, raw) {
     if (raw === "" || /^[0-9]+$/.test(raw)) {
       setQtyDraft((d) => ({ ...d, [productId]: raw }));
     }
   }
 
-  // Commit on blur/enter
+  
   function commitQty(productId) {
     const raw = qtyDraft[productId];
 
@@ -163,7 +163,7 @@ export default function PosPage() {
       return;
     }
 
-    // amountPaid parsing (only matters for CREDIT)
+    
     let parsedAmountPaid = 0;
     if (paymentType === "CREDIT") {
       if (amountPaid === "") parsedAmountPaid = 0;
@@ -177,9 +177,6 @@ export default function PosPage() {
       }
     }
 
-    // payment_method rules:
-    // - PAY_NOW => always required (we send it)
-    // - CREDIT => only send payment_method if amount_paid > 0, else send null
     const methodToSend =
       paymentType === "PAY_NOW"
         ? payment_method
@@ -209,11 +206,11 @@ export default function PosPage() {
       setCart([]);
       setQtyDraft({});
 
-      // reset credit fields after successful checkout
+      
       if (paymentType === "CREDIT") resetCreditFields();
     } catch (e2) {
       const data = e2?.response?.data;
-      // show field errors if any
+      
       setErr(
         data?.detail ||
           data?.due_date?.[0] ||
@@ -226,7 +223,7 @@ export default function PosPage() {
     }
   }
 
-  // Keep UX tight: if user switches back to PAY_NOW, clear credit-only fields
+  
   useEffect(() => {
     if (paymentType === "PAY_NOW") resetCreditFields();
   }, [paymentType]);
@@ -246,7 +243,6 @@ export default function PosPage() {
       />
       <CardBody>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 max-w-5xl">
-          {/* SKU form */}
           <form onSubmit={addSku} className="rounded-2xl border border-gray-100 bg-white p-4">
             <div className="flex items-end gap-3">
               <div className="flex-1">
@@ -264,7 +260,6 @@ export default function PosPage() {
             <div className="mt-3 text-xs text-gray-500">Tip: press Enter after scanning.</div>
           </form>
 
-          {/* Name search */}
           <div className="rounded-2xl border border-gray-100 bg-white p-4">
             <Input
               label="Search product by name"
@@ -303,7 +298,6 @@ export default function PosPage() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-          {/* Cart table */}
           <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white">
             <table className="w-full text-sm">
               <thead className="text-left text-gray-500 border-b">
@@ -366,7 +360,6 @@ export default function PosPage() {
             </table>
           </div>
 
-          {/* Summary */}
           <div className="rounded-2xl border border-gray-100 bg-white p-5 h-fit">
             <div className="flex items-center justify-between">
               <div className="font-semibold text-gray-900">Summary</div>
@@ -480,7 +473,6 @@ export default function PosPage() {
                     View Sale
                   </Button>
 
-                  {/* keep your existing receipt route if you have it */}
                   {ok.document_type === "INVOICE" ? (
                     <Button onClick={() => nav(`/app/sales/${ok.id}`)}>Invoice</Button>
                   ) : (

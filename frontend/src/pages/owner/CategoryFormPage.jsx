@@ -8,7 +8,7 @@ import Button from "../../components/ui/Button";
 import Loader from "../../components/ui/Loader";
 
 export default function CategoryFormPage() {
-  const { id } = useParams(); // "new" route won’t have id
+  const { id } = useParams(); 
   const isEdit = !!id;
   const nav = useNavigate();
 

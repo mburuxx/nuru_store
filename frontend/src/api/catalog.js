@@ -1,7 +1,7 @@
 import { api } from "./client";
 
 export const catalogApi = {
-  // categories
+  
   listCategories: (params) => api.get("/api/catalog/categories/", { params }),
   getCategory: (id) => api.get(`/api/catalog/categories/${id}/`),
   createCategory: (payload) => api.post("/api/catalog/categories/", payload),
@@ -9,7 +9,7 @@ export const catalogApi = {
   activateCategory: (id) => api.post(`/api/catalog/categories/${id}/activate/`),
   deactivateCategory: (id) => api.post(`/api/catalog/categories/${id}/deactivate/`),
 
-  // products
+  
   listProducts: (params) => api.get("/api/catalog/products/", { params }),
   getProduct: (id) => api.get(`/api/catalog/products/${id}/`),
   createProduct: (payload) => api.post("/api/catalog/products/", payload),

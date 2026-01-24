@@ -32,7 +32,6 @@ class SaleCreateAPIView(APIView):
         except InsufficientStock as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except ValueError as e:
-            # catches our payment validation from service (clean 400)
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(SaleDetailSerializer(sale).data, status=status.HTTP_201_CREATED)
@@ -48,11 +47,10 @@ class SaleListAPIView(generics.ListAPIView):
     def get_queryset(self):
         qs = Sale.objects.prefetch_related("items__product", "payments").select_related("receipt", "invoice", "cashier")
 
-        # basic filters
         status_q = self.request.query_params.get("status")
         cashier_id = self.request.query_params.get("cashier_id")
-        date_from = self.request.query_params.get("date_from")  # YYYY-MM-DD
-        date_to = self.request.query_params.get("date_to")      # YYYY-MM-DD
+        date_from = self.request.query_params.get("date_from")  
+        date_to = self.request.query_params.get("date_to")     
 
         if status_q:
             qs = qs.filter(status=status_q)
@@ -63,7 +61,6 @@ class SaleListAPIView(generics.ListAPIView):
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
 
-        # if not owner, only show own sales
         user = self.request.user
         is_owner = user.is_superuser or getattr(getattr(user, "profile", None), "role", None) == "OWNER"
         if not is_owner:
@@ -107,7 +104,6 @@ class SaleAddPaymentAPIView(APIView):
         except Sale.DoesNotExist:
             return Response({"detail": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            # use ValueError for domain errors: already paid, voided, invalid amount, etc.
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(SaleDetailSerializer(sale).data, status=status.HTTP_200_OK)

@@ -16,7 +16,7 @@ def apply_stock_movement(sender, instance: StockMovement, created, **kwargs):
     with transaction.atomic():
         inv = Inventory.objects.select_for_update().get(product=instance.product)
 
-        old_low_stock = inv.low_stock_flag  # <-- capture before changing quantity
+        old_low_stock = inv.low_stock_flag 
 
         if instance.direction == StockMovement.Direction.IN:
             inv.quantity += instance.quantity
@@ -32,11 +32,9 @@ def apply_stock_movement(sender, instance: StockMovement, created, **kwargs):
         inv.low_stock_flag = new_low_stock
         inv.save(update_fields=["quantity", "low_stock_flag", "updated_at"])
 
-        # ✅ Notify owners only when transitioning False -> True (avoid spam)
         if (old_low_stock is False) and (new_low_stock is True):
             owners = User.objects.filter(profile__role="OWNER", is_active=True)
 
-            # Optional: include reorder point in message
             rp = reorder_point(inv)
 
             for owner in owners:

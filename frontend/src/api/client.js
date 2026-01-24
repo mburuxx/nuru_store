@@ -23,7 +23,7 @@ function getRefresh() {
   return localStorage.getItem("refresh");
 }
 
-// Attach access token
+
 api.interceptors.request.use((config) => {
   const token = getAccess();
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -38,7 +38,7 @@ function processQueue(error, token = null) {
   refreshQueue = [];
 }
 
-// Auto refresh on 401
+
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -68,7 +68,6 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      // SimpleJWT refresh endpoint (adjust if yours differs)
       const r = await axios.post(`${API_BASE_URL}/api/users/refresh/`, { refresh });
       const newAccess = r.data.access;
       setAuthTokens({ access: newAccess });

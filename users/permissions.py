@@ -2,7 +2,6 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from .models import UserProfile
 
-
 def _role(user):
     if not user or not user.is_authenticated:
         return None

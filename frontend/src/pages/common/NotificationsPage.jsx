@@ -18,7 +18,7 @@ function fmt(dt) {
 function toneForType(t) {
   if (t === "LOW_STOCK") return "red";
   if (t === "SALE_VOIDED") return "yellow";
-  return "blue"; // SALE_MADE
+  return "blue";
 }
 
 export default function NotificationsPage() {
@@ -59,15 +59,12 @@ export default function NotificationsPage() {
   async function openNotification(n) {
     setOpenId(n.id);
 
-    // ✅ Auto-mark read the moment it’s opened (only if currently unread)
     if (!n.is_read) {
       try {
         await notificationsApi.markRead(n.id, true);
 
-        // update local UI instantly (no waiting for reload)
         setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
       } catch {
-        // if it fails, user can still manually mark later; don’t block opening
       }
     }
   }
@@ -97,7 +94,6 @@ export default function NotificationsPage() {
   }
 
   function jumpFromNotification(n) {
-    // Optional smart navigation
     if (n.sale_id) return nav(`/app/sales/${n.sale_id}`);
     if (n.product_id) return nav(`/app/owner/catalog/products/${n.product_id}/edit`);
   }
@@ -153,7 +149,6 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-            {/* list */}
             <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
               {items.map((n) => (
                 <button
@@ -179,7 +174,6 @@ export default function NotificationsPage() {
               ))}
             </div>
 
-            {/* details drawer */}
             <div className="rounded-2xl border border-gray-100 bg-white p-5 h-fit">
               {!openItem ? (
                 <div className="text-sm text-gray-600">Select a notification to view details.</div>

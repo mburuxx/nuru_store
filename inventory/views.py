@@ -63,13 +63,11 @@ class InventoryUpdateAPIView(generics.UpdateAPIView):
 
         old_low = inv.low_stock_flag
 
-        inv = serializer.save()  # updates reorder_level + reorder_threshold_percent
+        inv = serializer.save()
 
-        # recompute based on new rules
         inv.low_stock_flag = is_low_stock(inv)
         inv.save(update_fields=["low_stock_flag", "updated_at"])
 
-        # notify owners only when transitioning False -> True
         if (old_low is False) and (inv.low_stock_flag is True):
             rp = reorder_point(inv)
             owners = User.objects.filter(profile__role="OWNER", is_active=True)
@@ -126,7 +124,6 @@ class SupplyStockAPIView(APIView):
         new_sell = s.validated_data.get("new_sp", None)
 
         with transaction.atomic():
-            # 1) record movement (triggers post_save to apply quantity)
             StockMovement.objects.create(
             product=product,
             movement_type=StockMovement.MovementType.SUPPLY,
@@ -138,8 +135,6 @@ class SupplyStockAPIView(APIView):
             unit_sp=new_sell,
             )
 
-
-        # 2) update Product "current prices" if supplied
         updates = []
         if new_cost is not None:
             product.cost_price = new_cost
@@ -224,8 +219,6 @@ class SetReorderAPIView(APIView):
         inv.reorder_level = s.validated_data["reorder_level"]
         inv.reorder_threshold_percent = s.validated_data["reorder_threshold_percent"]
 
-        # re-evaluate low stock flag
-        # reorder point = ceil(reorder_level * percent/100)
         reorder_point = (inv.reorder_level * inv.reorder_threshold_percent + 99) // 100
         inv.low_stock_flag = (reorder_point > 0 and inv.quantity <= reorder_point)
 

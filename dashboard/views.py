@@ -25,7 +25,6 @@ def _date_range_from_query(request):
     now = timezone.now()
 
     if date_from and date_to:
-        # interpret as local dates
         start = timezone.make_aware(timezone.datetime.fromisoformat(date_from + "T00:00:00"))
         end = timezone.make_aware(timezone.datetime.fromisoformat(date_to + "T23:59:59"))
         return start, end
@@ -80,7 +79,7 @@ class SalesTrendAPIView(APIView):
 
     def get(self, request):
         start, end = _date_range_from_query(request)
-        period = request.query_params.get("period", "day")  # day|month
+        period = request.query_params.get("period", "day") 
 
         qs = Sale.objects.filter(created_at__range=(start, end), status=Sale.Status.COMPLETED)
 
@@ -293,7 +292,7 @@ class CashierSalesTrendAPIView(APIView):
 
     def get(self, request):
         start, end = _date_range_from_query(request)
-        period = request.query_params.get("period", "day")  # day|month
+        period = request.query_params.get("period", "day") 
 
         qs = Sale.objects.filter(
             cashier=request.user,
@@ -378,7 +377,7 @@ class CashierSalesTrendAPIView(APIView):
 
     def get(self, request):
         start, end = _date_range_from_query(request)
-        period = request.query_params.get("period", "day")  # day|month
+        period = request.query_params.get("period", "day") 
 
         qs = Sale.objects.filter(
             cashier=request.user,
@@ -426,6 +425,5 @@ class CashierRecentSalesAPIView(APIView):
             .order_by("-created_at")[:limit]
         )
 
-        # Reuse your existing serializer
         from sales.serializers import SaleDetailSerializer
         return Response(SaleDetailSerializer(qs, many=True).data)
