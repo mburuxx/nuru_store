@@ -5,10 +5,9 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Sale
-from .serializers import SaleCreateSerializer, SaleDetailSerializer
-from .services import create_sale, InsufficientStock, void_sale, AlreadyVoided
+from .serializers import SaleCreateSerializer, SaleDetailSerializer, AddPaymentSerializer
+from .services import create_sale, InsufficientStock, void_sale, AlreadyVoided, add_payment
 from users.permissions import IsCashier,  IsOwner
-
 
 class SaleCreateAPIView(APIView):
     permission_classes = [IsAuthenticated, IsCashier]
@@ -17,21 +16,29 @@ class SaleCreateAPIView(APIView):
         serializer = SaleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        v = serializer.validated_data
+
         try:
             sale = create_sale(
                 cashier=request.user,
-                payment_method=serializer.validated_data["payment_method"],
-                items=serializer.validated_data["items"],
+                payment_type=v["payment_type"],
+                payment_method=v.get("payment_method"),
+                amount_paid=v.get("amount_paid"),
+                due_date=v.get("due_date"),
+                customer_name=v.get("customer_name", ""),
+                customer_phone=v.get("customer_phone", ""),
+                items=v["items"],
             )
         except InsufficientStock as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            # catches our payment validation from service (clean 400)
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(SaleDetailSerializer(sale).data, status=status.HTTP_201_CREATED)
-
-
 class SaleDetailAPIView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsCashier]
-    queryset = Sale.objects.prefetch_related("items__product").select_related("receipt")
+    queryset = Sale.objects.prefetch_related("items__product", "payments").select_related("receipt", "invoice", "cashier")
     serializer_class = SaleDetailSerializer
 
 class SaleListAPIView(generics.ListAPIView):
@@ -39,7 +46,7 @@ class SaleListAPIView(generics.ListAPIView):
     serializer_class = SaleDetailSerializer
 
     def get_queryset(self):
-        qs = Sale.objects.prefetch_related("items__product").select_related("receipt", "cashier")
+        qs = Sale.objects.prefetch_related("items__product", "payments").select_related("receipt", "invoice", "cashier")
 
         # basic filters
         status_q = self.request.query_params.get("status")
@@ -68,7 +75,6 @@ class SaleListAPIView(generics.ListAPIView):
 class SaleVoidAPIView(APIView):
     """
     OWNER-only by default (safe).
-    If you want cashiers to void their own sales, tell me and we’ll relax rules safely.
     """
     permission_classes = [IsAuthenticated, IsOwner]
 
@@ -79,6 +85,29 @@ class SaleVoidAPIView(APIView):
         except Sale.DoesNotExist:
             return Response({"detail": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
         except AlreadyVoided as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(SaleDetailSerializer(sale).data, status=status.HTTP_200_OK)
+    
+class SaleAddPaymentAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsCashier]
+
+    def post(self, request, sale_id: int):
+        s = AddPaymentSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        try:
+            sale = add_payment(
+                sale_id=sale_id,
+                received_by=request.user,
+                method=s.validated_data["method"],
+                amount=s.validated_data["amount"],
+                reference=s.validated_data.get("reference", ""),
+            )
+        except Sale.DoesNotExist:
+            return Response({"detail": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            # use ValueError for domain errors: already paid, voided, invalid amount, etc.
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(SaleDetailSerializer(sale).data, status=status.HTTP_200_OK)

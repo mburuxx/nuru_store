@@ -1,3 +1,4 @@
+// frontend/src/pages/cashier/PosPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { catalogApi } from "../../api/catalog";
@@ -14,7 +15,17 @@ export default function PosPage() {
 
   const [sku, setSku] = useState("");
   const [cart, setCart] = useState([]); // {product, quantity:number}
-  const [payment_method, setPaymentMethod] = useState("CASH");
+
+  // payment controls
+  const [paymentType, setPaymentType] = useState("PAY_NOW"); // PAY_NOW | CREDIT
+  const [payment_method, setPaymentMethod] = useState("CASH"); // CASH | MPESA | CARD | BANK
+  const [amountPaid, setAmountPaid] = useState(""); // optional for CREDIT (partial pay)
+  const [dueDate, setDueDate] = useState(""); // required for CREDIT
+
+  // optional customer details for credit
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+
   const [err, setErr] = useState("");
   const [ok, setOk] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -81,7 +92,6 @@ export default function PosPage() {
       if (idx >= 0) {
         const copy = [...prev];
         copy[idx] = { ...copy[idx], quantity: copy[idx].quantity + 1 };
-        // keep draft in sync
         setQtyDraft((d) => ({ ...d, [p.id]: String(copy[idx].quantity) }));
         return copy;
       }
@@ -101,7 +111,6 @@ export default function PosPage() {
 
   // User typing: do NOT convert to number yet
   function onQtyChange(productId, raw) {
-    // allow only digits or empty (so backspace works)
     if (raw === "" || /^[0-9]+$/.test(raw)) {
       setQtyDraft((d) => ({ ...d, [productId]: raw }));
     }
@@ -111,7 +120,6 @@ export default function PosPage() {
   function commitQty(productId) {
     const raw = qtyDraft[productId];
 
-    // If empty, restore previous quantity or default to 1
     if (raw === "" || raw == null) {
       const existing = cart.find((r) => r.product.id === productId)?.quantity ?? 1;
       setQtyDraft((d) => ({ ...d, [productId]: String(existing) }));
@@ -119,10 +127,6 @@ export default function PosPage() {
     }
 
     const n = Number(raw);
-
-    // Optional behavior:
-    // - 0 removes item
-    // - <0 -> clamp
     if (Number.isNaN(n)) return;
 
     if (n === 0) {
@@ -138,6 +142,13 @@ export default function PosPage() {
     setQtyDraft((d) => ({ ...d, [productId]: String(finalQty) }));
   }
 
+  function resetCreditFields() {
+    setAmountPaid("");
+    setDueDate("");
+    setCustomerName("");
+    setCustomerPhone("");
+  }
+
   async function checkout() {
     setErr("");
     setOk(null);
@@ -147,29 +158,91 @@ export default function PosPage() {
       return;
     }
 
+    if (paymentType === "CREDIT" && !dueDate) {
+      setErr("Due date is required for credit sales.");
+      return;
+    }
+
+    // amountPaid parsing (only matters for CREDIT)
+    let parsedAmountPaid = 0;
+    if (paymentType === "CREDIT") {
+      if (amountPaid === "") parsedAmountPaid = 0;
+      else {
+        const n = Number(amountPaid);
+        if (Number.isNaN(n) || n < 0) {
+          setErr("Amount paid now must be a valid number (0 or more).");
+          return;
+        }
+        parsedAmountPaid = n;
+      }
+    }
+
+    // payment_method rules:
+    // - PAY_NOW => always required (we send it)
+    // - CREDIT => only send payment_method if amount_paid > 0, else send null
+    const methodToSend =
+      paymentType === "PAY_NOW"
+        ? payment_method
+        : parsedAmountPaid > 0
+          ? payment_method
+          : null;
+
     setBusy(true);
     try {
       const payload = {
-        payment_method,
+        payment_type: paymentType,
+        payment_method: methodToSend,
+        ...(paymentType === "CREDIT"
+          ? {
+              amount_paid: parsedAmountPaid,
+              due_date: dueDate,
+              customer_name: customerName,
+              customer_phone: customerPhone,
+            }
+          : {}),
         items: cart.map((row) => ({ product_id: row.product.id, quantity: row.quantity })),
       };
+
       const res = await salesApi.create(payload);
       setOk(res.data);
+
       setCart([]);
       setQtyDraft({});
+
+      // reset credit fields after successful checkout
+      if (paymentType === "CREDIT") resetCreditFields();
     } catch (e2) {
-      setErr(e2?.response?.data?.detail || "Checkout failed.");
+      const data = e2?.response?.data;
+      // show field errors if any
+      setErr(
+        data?.detail ||
+          data?.due_date?.[0] ||
+          data?.payment_method?.[0] ||
+          data?.amount_paid?.[0] ||
+          "Checkout failed."
+      );
     } finally {
       setBusy(false);
     }
   }
+
+  // Keep UX tight: if user switches back to PAY_NOW, clear credit-only fields
+  useEffect(() => {
+    if (paymentType === "PAY_NOW") resetCreditFields();
+  }, [paymentType]);
+
+  const showPaymentMethodDisabled = paymentType === "CREDIT" && (!amountPaid || Number(amountPaid) === 0);
 
   return (
     <Card>
       <CardHeader
         title="POS"
         subtitle="Scan SKU or search products, build cart, checkout."
-        right={<Button variant="secondary" onClick={() => nav("/app/sales")}>My Sales</Button>}
+        right={
+          <Button variant="secondary" onClick={() => nav("/app/sales")}>
+            My Sales
+          </Button>
+        }
       />
       <CardBody>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 max-w-5xl">
@@ -210,9 +283,13 @@ export default function PosPage() {
                     <div key={p.id} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
                       <div>
                         <div className="font-medium text-gray-900">{p.name}</div>
-                        <div className="text-xs text-gray-500">{p.sku} • {p.selling_price}</div>
+                        <div className="text-xs text-gray-500">
+                          {p.sku} • {p.selling_price}
+                        </div>
                       </div>
-                      <Button variant="secondary" onClick={() => addToCart(p)}>Add</Button>
+                      <Button variant="secondary" onClick={() => addToCart(p)}>
+                        Add
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -225,7 +302,7 @@ export default function PosPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
           {/* Cart table */}
           <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white">
             <table className="w-full text-sm">
@@ -271,7 +348,9 @@ export default function PosPage() {
                         {(Number(row.product.selling_price) * row.quantity).toFixed(2)}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" onClick={() => removeFromCart(pid)}>Remove</Button>
+                        <Button variant="ghost" onClick={() => removeFromCart(pid)}>
+                          Remove
+                        </Button>
                       </td>
                     </tr>
                   );
@@ -291,7 +370,7 @@ export default function PosPage() {
           <div className="rounded-2xl border border-gray-100 bg-white p-5 h-fit">
             <div className="flex items-center justify-between">
               <div className="font-semibold text-gray-900">Summary</div>
-              <Badge tone="blue">{payment_method}</Badge>
+              <Badge tone={paymentType === "CREDIT" ? "yellow" : "blue"}>{paymentType}</Badge>
             </div>
 
             <div className="mt-4 text-sm text-gray-700 flex items-center justify-between">
@@ -299,17 +378,75 @@ export default function PosPage() {
               <span className="font-semibold">{subtotal.toFixed(2)}</span>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
               <Select
-                label="Payment method"
+                label="Payment type"
+                value={paymentType}
+                onChange={(e) => setPaymentType(e.target.value)}
+              >
+                <option value="PAY_NOW">PAY NOW</option>
+                <option value="CREDIT">CREDIT</option>
+              </Select>
+
+              <Select
+                label={
+                  showPaymentMethodDisabled
+                    ? "Payment method (enable by entering amount paid now)"
+                    : "Payment method"
+                }
                 value={payment_method}
                 onChange={(e) => setPaymentMethod(e.target.value)}
+                disabled={showPaymentMethodDisabled}
               >
                 <option value="CASH">CASH</option>
                 <option value="MPESA">MPESA</option>
                 <option value="CARD">CARD</option>
                 <option value="BANK">BANK</option>
               </Select>
+
+              {paymentType === "CREDIT" ? (
+                <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
+                  <div className="text-xs font-medium text-gray-700 mb-2">Credit details</div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <Input
+                      label="Due date"
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+
+                    <Input
+                      label="Amount paid now (optional)"
+                      value={amountPaid}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^[0-9]+(\.[0-9]{0,2})?$/.test(v)) setAmountPaid(v);
+                      }}
+                      placeholder="0.00"
+                    />
+
+                    <Input
+                      label="Customer name (optional)"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="e.g. John"
+                    />
+
+                    <Input
+                      label="Customer phone (optional)"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="e.g. 07..."
+                    />
+
+                    <div className="text-xs text-gray-500">
+                      If <span className="font-medium">amount paid now</span> is 0, the sale will be recorded as credit
+                      and an <span className="font-medium">invoice</span> should be issued.
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {err ? <div className="text-sm text-red-600 mt-4">{err}</div> : null}
@@ -320,13 +457,35 @@ export default function PosPage() {
 
             {ok ? (
               <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm">
-                <div className="font-semibold">Sale complete ✅</div>
-                <div className="text-gray-600">Sale #{ok.id} • Total {ok.total}</div>
-                <div className="text-gray-600">Receipt: {ok.receipt?.receipt_number || "—"}</div>
+                <div className="font-semibold">Sale recorded ✅</div>
+                <div className="text-gray-600">
+                  Sale #{ok.id} • Total {ok.total} • {ok.payment_status}
+                </div>
+
+                <div className="text-gray-600">
+                  Document:{" "}
+                  {ok.document_type === "INVOICE"
+                    ? `Invoice ${ok.invoice?.invoice_number || "—"}`
+                    : `Receipt ${ok.receipt?.receipt_number || "—"}`}
+                </div>
+
+                {ok.document_type === "INVOICE" ? (
+                  <div className="text-gray-600">
+                    Balance due: {ok.balance_due} • Due: {ok.due_date || ok.invoice?.due_date || "—"}
+                  </div>
+                ) : null}
 
                 <div className="mt-3 flex gap-2">
-                  <Button variant="secondary" onClick={() => nav(`/app/sales/${ok.id}`)}>View Sale</Button>
-                  <Button onClick={() => nav(`/app/sales/${ok.id}/receipt`)}>Receipt</Button>
+                  <Button variant="secondary" onClick={() => nav(`/app/sales/${ok.id}`)}>
+                    View Sale
+                  </Button>
+
+                  {/* keep your existing receipt route if you have it */}
+                  {ok.document_type === "INVOICE" ? (
+                    <Button onClick={() => nav(`/app/sales/${ok.id}`)}>Invoice</Button>
+                  ) : (
+                    <Button onClick={() => nav(`/app/sales/${ok.id}/receipt`)}>Receipt</Button>
+                  )}
                 </div>
               </div>
             ) : null}

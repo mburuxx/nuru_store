@@ -4,7 +4,7 @@ import { salesApi } from "../../api/sales";
 import Button from "../../components/ui/Button";
 import Loader from "../../components/ui/Loader";
 
-export default function ReceiptPage() {
+export default function InvoicePage() {
   const { id } = useParams();
   const nav = useNavigate();
   const [sale, setSale] = useState(null);
@@ -19,7 +19,7 @@ export default function ReceiptPage() {
         const res = await salesApi.detail(id);
         setSale(res.data);
       } catch {
-        setErr("Failed to load receipt.");
+        setErr("Failed to load invoice.");
       } finally {
         setLoading(false);
       }
@@ -31,6 +31,8 @@ export default function ReceiptPage() {
   if (err) return <div className="text-sm text-red-600">{err}</div>;
   if (!sale) return null;
 
+  const inv = sale.invoice;
+
   return (
     <div className="mx-auto max-w-md">
       <div className="flex gap-2 mb-4 print:hidden">
@@ -41,28 +43,43 @@ export default function ReceiptPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 print:shadow-none print:border-0">
         <div className="text-center">
           <div className="text-lg font-semibold">Nuru Store</div>
-          <div className="text-xs text-gray-500">Receipt</div>
+          <div className="text-xs text-gray-500">Invoice</div>
 
           <div className="mt-2 text-sm">
-            <div className="font-medium">{sale.receipt?.receipt_number || "—"}</div>
+            <div className="font-medium">{inv?.invoice_number || "—"}</div>
             <div className="text-xs text-gray-500">{new Date(sale.created_at).toLocaleString()}</div>
           </div>
         </div>
 
-        <div className="mt-4 border-t border-gray-100 pt-4 text-sm">
+        <div className="mt-4 border-t border-gray-100 pt-4 text-sm space-y-1">
           <div className="flex justify-between">
             <span className="text-gray-600">Sale ID</span>
             <span className="font-medium">#{sale.id}</span>
           </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-gray-600">Payment</span>
-            <span className="font-medium">{sale.payment_method}</span>
+
+          <div className="flex justify-between">
+            <span className="text-gray-600">Invoice status</span>
+            <span className="font-medium">{inv?.status || "—"}</span>
           </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-gray-600">Status</span>
-            <span className="font-medium">{sale.status}</span>
+
+          <div className="flex justify-between">
+            <span className="text-gray-600">Due date</span>
+            <span className="font-medium">{inv?.due_date || sale.due_date || "—"}</span>
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-gray-600">Payment status</span>
+            <span className="font-medium">{sale.payment_status}</span>
           </div>
         </div>
+
+        {(sale.customer_name || sale.customer_phone) ? (
+          <div className="mt-4 border-t border-gray-100 pt-4 text-sm space-y-1">
+            <div className="font-medium text-gray-900">Customer</div>
+            {sale.customer_name ? <div className="text-gray-700">{sale.customer_name}</div> : null}
+            {sale.customer_phone ? <div className="text-gray-700">{sale.customer_phone}</div> : null}
+          </div>
+        ) : null}
 
         <div className="mt-4 border-t border-gray-100 pt-4">
           <table className="w-full text-sm">
@@ -88,28 +105,26 @@ export default function ReceiptPage() {
           </table>
         </div>
 
-        <div className="mt-4 border-t border-gray-100 pt-4 text-sm">
+        <div className="mt-4 border-t border-gray-100 pt-4 text-sm space-y-1">
           <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="font-semibold">{sale.subtotal}</span>
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-gray-600">Discount</span>
-            <span className="font-semibold">{sale.discount}</span>
-          </div>
-          <div className="flex justify-between mt-2 text-base">
-            <span className="font-semibold">Total</span>
+            <span className="text-gray-600">Total</span>
             <span className="font-semibold">{sale.total}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Amount paid</span>
+            <span className="font-semibold">{sale.amount_paid}</span>
+          </div>
+          <div className="flex justify-between text-base">
+            <span className="font-semibold">Balance</span>
+            <span className="font-semibold">
+              {(Number(sale.total) - Number(sale.amount_paid)).toFixed(2)}
+            </span>
           </div>
         </div>
 
         <div className="mt-4 border-t border-gray-100 pt-4 text-xs text-gray-500 text-center">
           You were served by{" "}
           <span className="font-medium text-gray-700">{sale.cashier_username || "—"}</span>
-        </div>
-
-        <div className="mt-6 text-center text-xs text-gray-500">
-          Thank you!
         </div>
       </div>
     </div>

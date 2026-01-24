@@ -31,9 +31,9 @@ import StockOpsPage from "./pages/owner/StockOpsPage";
 import SalesListPage from "./pages/common/SalesListPage";
 import SaleDetailPage from "./pages/common/SaleDetailPage";
 import ReceiptPage from "./pages/common/ReceiptPage";
+import InvoicePage from "./pages/common/InvoicePage";
 
 import NotificationsPage from "./pages/common/NotificationsPage";
-
 function AppEntry() {
   const { user, loading } = useAuth();
   if (loading) return <div className="p-6">Loading...</div>;
@@ -75,6 +75,8 @@ export default function App() {
               <Route path="sales" element={<SalesListPage />} />
               <Route path="sales/:id" element={<SaleDetailPage />} />
               <Route path="sales/:id/receipt" element={<ReceiptPage />} />
+              <Route path="sales/:id/invoice" element={<InvoicePage />} />
+
 
               <Route path="notifications" element={<NotificationsPage />} />
 
