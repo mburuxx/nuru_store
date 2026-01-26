@@ -237,23 +237,23 @@ ALLOWED_HOSTS=127.0.0.1,localhost
 
 - Create a ```screenshots/ directory``` in the repository.
 
-#### Login
-![Login](screenshots/login.png)
-
-#### Owner Dashboard
-![Owner Dashboard](screenshots/owner-dashboard.png)
-
 #### Cashier Dashboard
 ![Cashier Dashboard](screenshots/cashier-dashboard.png)
 
 #### POS
 ![POS](screenshots/pos.png)
 
-#### Notifications
-![Notifications](screenshots/notifications.png)
-
 #### Invoice
 ![Invoice](screenshots/invoice.png)
+
+#### Owner Dashboard
+![Owner Dashboard](screenshots/owner-dashboard.png)
+
+#### Stock Operations
+![Stock Ops](screenshots/stock-ops.png)
+
+#### Notifications
+![Notifications](screenshots/notifications.png)
 
 ---
 
