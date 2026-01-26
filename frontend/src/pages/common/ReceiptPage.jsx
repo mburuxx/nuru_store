@@ -33,12 +33,28 @@ export default function ReceiptPage() {
 
   return (
     <div className="mx-auto max-w-md">
+      {/* PRINT FIX: only print the .printable-area */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .printable-area, .printable-area * { visibility: visible !important; }
+          .printable-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
+
       <div className="flex gap-2 mb-4 print:hidden">
         <Button variant="secondary" onClick={() => nav(-1)}>Back</Button>
         <Button onClick={() => window.print()}>Print</Button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 print:shadow-none print:border-0">
+      <div className="printable-area bg-white rounded-2xl border border-gray-100 shadow-sm p-5 print:shadow-none print:border-0">
         <div className="text-center">
           <div className="text-lg font-semibold">Nuru Store</div>
           <div className="text-xs text-gray-500">Receipt</div>
@@ -56,7 +72,7 @@ export default function ReceiptPage() {
           </div>
           <div className="flex justify-between mt-1">
             <span className="text-gray-600">Payment</span>
-            <span className="font-medium">{sale.payment_method}</span>
+            <span className="font-medium">{sale.payment_method || "—"}</span>
           </div>
           <div className="flex justify-between mt-1">
             <span className="text-gray-600">Status</span>
@@ -108,9 +124,7 @@ export default function ReceiptPage() {
           <span className="font-medium text-gray-700">{sale.cashier_username || "—"}</span>
         </div>
 
-        <div className="mt-6 text-center text-xs text-gray-500">
-          Thank you!
-        </div>
+        <div className="mt-6 text-center text-xs text-gray-500">Thank you!</div>
       </div>
     </div>
   );

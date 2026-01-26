@@ -63,37 +63,87 @@ function StatCard({ title, value, hint, tone = "blue", onClick }) {
   );
 }
 
-/** Simple SVG line chart (no external libs) */
-function LineChart({ points = [], height = 120 }) {
-  if (!points.length) {
-    return <div className="text-sm text-gray-600">No data in this range.</div>;
-  }
+/** Donut chart (SVG) */
+function DonutChart({ segments = [], size = 140, stroke = 18, centerLabel = "Inventory" }) {
+  const total = segments.reduce((s, x) => s + Number(x.value || 0), 0);
+  if (!total) return <div className="text-sm text-gray-600">No data yet.</div>;
 
-  const values = points.map((p) => Number(p.revenue || 0));
-  const max = Math.max(...values, 1);
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
 
-  const w = 520;
-  const h = height;
+  let acc = 0;
+  const arcs = segments
+    .filter((s) => Number(s.value || 0) > 0)
+    .map((seg) => {
+      const v = Number(seg.value || 0);
+      const pct = v / total;
+      const dash = pct * c;
+      const gap = c - dash;
+      const offset = (acc / total) * c;
+      acc += v;
+      return { ...seg, dash, gap, offset };
+    });
 
-  const step = w / Math.max(points.length - 1, 1);
-  const coords = points.map((p, i) => {
-    const x = i * step;
-    const y = h - (Number(p.revenue || 0) / max) * (h - 12) - 6;
-    return [x, y];
-  });
-
-  const d = coords
-    .map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`)
-    .join(" ");
+  // keep it “business console” — clean muted palette
+  const palette = ["#2563EB", "#F59E0B", "#EF4444", "#10B981", "#6B7280"];
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
-      <line x1="0" y1={h - 1} x2={w} y2={h - 1} stroke="#E5E7EB" strokeWidth="1" />
-      <path d={d} stroke="#1D4ED8" strokeWidth="2.5" fill="none" />
-      {coords.map(([x, y], idx) => (
-        <circle key={idx} cx={x} cy={y} r="3" fill="#1D4ED8" />
-      ))}
-    </svg>
+    <div className="flex items-center gap-5">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke="#E5E7EB"
+            strokeWidth={stroke}
+            fill="none"
+          />
+          {arcs.map((a, i) => (
+            <circle
+              key={a.label}
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke={a.color || palette[i % palette.length]}
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              strokeDasharray={`${a.dash} ${a.gap}`}
+              strokeDashoffset={-a.offset}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          ))}
+        </svg>
+
+        <div className="absolute inset-0 grid place-items-center text-center">
+          <div className="text-xs text-gray-500">{centerLabel}</div>
+          <div className="text-lg font-semibold text-gray-900">{total}</div>
+          <div className="text-[11px] text-gray-500">SKUs</div>
+        </div>
+      </div>
+
+      <div className="min-w-[160px] space-y-2">
+        {segments.map((s, i) => {
+          const v = Number(s.value || 0);
+          const pct = total ? Math.round((v / total) * 100) : 0;
+          return (
+            <div key={s.label} className="flex items-center justify-between gap-3 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ background: s.color || palette[i % palette.length] }}
+                />
+                <span className="text-gray-700 truncate">{s.label}</span>
+              </div>
+              <div className="text-gray-900 font-semibold">
+                {v} <span className="text-gray-400 font-normal text-xs">({pct}%)</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -157,13 +207,25 @@ export default function OwnerDashboard() {
   }, [load]);
 
   useEffect(() => {
-  document.title = "Dashboard • NURU STORES";
-}, []);
+    document.title = "Dashboard • NURU STORES";
+  }, []);
 
-  const trendPoints = useMemo(() => {
-    const rows = trend?.data || [];
-    return rows.map((r) => ({ bucket: r.bucket, revenue: Number(r.revenue || 0), count: r.count }));
-  }, [trend]);
+  // --- inventory donut data (uses existing backend fields you already have)
+  const inventorySegments = useMemo(() => {
+    const totalSkus = Number(health?.total_skus || 0);
+
+    // prefer summary counts if available (likely accurate & fast)
+    const out = Number(summary?.out_of_stock_count ?? 0);
+    const low = Number(summary?.low_stock_count ?? 0);
+
+    const inStock = Math.max(0, totalSkus - low - out);
+
+    return [
+      { label: "In stock", value: inStock, color: "#2563EB" },
+      { label: "Low stock", value: low, color: "#F59E0B" },
+      { label: "Out of stock", value: out, color: "#EF4444" },
+    ];
+  }, [health, summary]);
 
   return (
     <Card>
@@ -253,16 +315,17 @@ export default function OwnerDashboard() {
 
             {/* Charts + lists */}
             <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* ✅ REPLACED: Revenue trend -> Inventory status donut */}
               <div className="rounded-2xl border border-gray-100 bg-white p-5">
                 <div className="flex items-center justify-between">
-                  <div className="font-semibold text-gray-900">Revenue trend</div>
-                  <Badge tone="blue">Daily</Badge>
+                  <div className="font-semibold text-gray-900">Inventory status</div>
+                  <Badge tone="blue">SKUs</Badge>
                 </div>
                 <div className="mt-4">
-                  <LineChart points={trendPoints} />
+                  <DonutChart segments={inventorySegments} centerLabel="Inventory" />
                 </div>
                 <div className="mt-3 text-xs text-gray-500">
-                  Tip: consistent slope = stable sales. dips = investigate out-of-stock or slow days.
+                  Quick read: keep “Low stock” small, and “Out of stock” near zero.
                 </div>
               </div>
 

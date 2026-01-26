@@ -39,24 +39,35 @@ export default function InvoicePage() {
   const invoiceNumber = sale.invoice?.invoice_number || "—";
   const invoiceStatus = sale.invoice?.status || "—";
   const issuedAt = sale.invoice?.issued_at ? new Date(sale.invoice.issued_at).toLocaleString() : null;
-
   const dueDate = sale.due_date || sale.invoice?.due_date || "—";
 
   const amountPaid = sale.amount_paid ?? "0.00";
   const balanceDue = sale.balance_due ?? "0.00";
 
-  const isCredit = sale.payment_type === "CREDIT";
-
   return (
     <div className="mx-auto max-w-md">
+      {/* PRINT FIX: only print the .printable-area */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .printable-area, .printable-area * { visibility: visible !important; }
+          .printable-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}</style>
+
       <div className="flex gap-2 mb-4 print:hidden">
-        <Button variant="secondary" onClick={() => nav(-1)}>
-          Back
-        </Button>
+        <Button variant="secondary" onClick={() => nav(-1)}>Back</Button>
         <Button onClick={() => window.print()}>Print</Button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 print:shadow-none print:border-0">
+      <div className="printable-area bg-white rounded-2xl border border-gray-100 shadow-sm p-5 print:shadow-none print:border-0">
         <div className="text-center">
           <div className="text-lg font-semibold">Nuru Store</div>
           <div className="text-xs text-gray-500">Invoice</div>
@@ -167,12 +178,6 @@ export default function InvoicePage() {
               <span className="font-semibold">{balanceDue}</span>
             </div>
           </div>
-
-          {!isCredit ? (
-            <div className="mt-3 text-xs text-amber-600">
-              Note: This sale is not marked as CREDIT, but you opened the invoice page.
-            </div>
-          ) : null}
         </div>
 
         {sale.payments?.length ? (
@@ -205,7 +210,7 @@ export default function InvoicePage() {
         </div>
 
         <div className="mt-6 text-center text-xs text-gray-500">
-          {isCredit ? "Please pay the balance on or before the due date." : "Thank you!"}
+          Please pay the balance on or before the due date.
         </div>
       </div>
     </div>

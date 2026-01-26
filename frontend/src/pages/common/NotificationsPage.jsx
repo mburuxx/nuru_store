@@ -1,3 +1,4 @@
+// pages/common/NotificationsPage.jsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { notificationsApi } from "../../api/notifications";
@@ -56,19 +57,6 @@ export default function NotificationsPage() {
     load();
   }, [load]);
 
-  async function openNotification(n) {
-    setOpenId(n.id);
-
-    if (!n.is_read) {
-      try {
-        await notificationsApi.markRead(n.id, true);
-
-        setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
-      } catch {
-      }
-    }
-  }
-
   function closeDrawer() {
     setOpenId(null);
   }
@@ -96,6 +84,22 @@ export default function NotificationsPage() {
   function jumpFromNotification(n) {
     if (n.sale_id) return nav(`/app/sales/${n.sale_id}`);
     if (n.product_id) return nav(`/app/owner/catalog/products/${n.product_id}/edit`);
+  }
+
+  async function openNotification(n) {
+    setOpenId(n.id);
+
+    if (!n.is_read) {
+      try {
+        await notificationsApi.markRead(n.id, true);
+        setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
+      } catch {}
+    }
+
+    // ✅ NEW: clicking a notification immediately opens the related record
+    if (n.sale_id || n.product_id) {
+      jumpFromNotification(n);
+    }
   }
 
   return (
