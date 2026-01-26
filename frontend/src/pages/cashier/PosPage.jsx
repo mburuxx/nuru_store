@@ -1,4 +1,4 @@
-
+// pages/cashier/PosPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { catalogApi } from "../../api/catalog";
@@ -14,15 +14,13 @@ export default function PosPage() {
   const nav = useNavigate();
 
   const [sku, setSku] = useState("");
-  const [cart, setCart] = useState([]); 
+  const [cart, setCart] = useState([]);
 
-  
-  const [paymentType, setPaymentType] = useState("PAY_NOW"); 
-  const [payment_method, setPaymentMethod] = useState("CASH"); 
-  const [amountPaid, setAmountPaid] = useState(""); 
-  const [dueDate, setDueDate] = useState(""); 
+  const [paymentType, setPaymentType] = useState("PAY_NOW");
+  const [payment_method, setPaymentMethod] = useState("CASH");
+  const [amountPaid, setAmountPaid] = useState("");
+  const [dueDate, setDueDate] = useState("");
 
-  
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
 
@@ -30,8 +28,7 @@ export default function PosPage() {
   const [ok, setOk] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  
-  const [qtyDraft, setQtyDraft] = useState({}); 
+  const [qtyDraft, setQtyDraft] = useState({});
 
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
@@ -41,7 +38,6 @@ export default function PosPage() {
     return cart.reduce((sum, row) => sum + Number(row.product.selling_price) * row.quantity, 0);
   }, [cart]);
 
-  
   async function addSku(e) {
     e.preventDefault();
     setErr("");
@@ -62,7 +58,6 @@ export default function PosPage() {
     }
   }
 
-  
   useEffect(() => {
     const q = search.trim();
     if (!q) {
@@ -109,14 +104,12 @@ export default function PosPage() {
     });
   }
 
-  
   function onQtyChange(productId, raw) {
     if (raw === "" || /^[0-9]+$/.test(raw)) {
       setQtyDraft((d) => ({ ...d, [productId]: raw }));
     }
   }
 
-  
   function commitQty(productId) {
     const raw = qtyDraft[productId];
 
@@ -163,7 +156,6 @@ export default function PosPage() {
       return;
     }
 
-    
     let parsedAmountPaid = 0;
     if (paymentType === "CREDIT") {
       if (amountPaid === "") parsedAmountPaid = 0;
@@ -181,8 +173,8 @@ export default function PosPage() {
       paymentType === "PAY_NOW"
         ? payment_method
         : parsedAmountPaid > 0
-          ? payment_method
-          : null;
+        ? payment_method
+        : null;
 
     setBusy(true);
     try {
@@ -206,11 +198,10 @@ export default function PosPage() {
       setCart([]);
       setQtyDraft({});
 
-      
       if (paymentType === "CREDIT") resetCreditFields();
     } catch (e2) {
       const data = e2?.response?.data;
-      
+
       setErr(
         data?.detail ||
           data?.due_date?.[0] ||
@@ -223,7 +214,6 @@ export default function PosPage() {
     }
   }
 
-  
   useEffect(() => {
     if (paymentType === "PAY_NOW") resetCreditFields();
   }, [paymentType]);
@@ -372,11 +362,7 @@ export default function PosPage() {
             </div>
 
             <div className="mt-4 space-y-3">
-              <Select
-                label="Payment type"
-                value={paymentType}
-                onChange={(e) => setPaymentType(e.target.value)}
-              >
+              <Select label="Payment type" value={paymentType} onChange={(e) => setPaymentType(e.target.value)}>
                 <option value="PAY_NOW">PAY NOW</option>
                 <option value="CREDIT">CREDIT</option>
               </Select>
@@ -463,9 +449,14 @@ export default function PosPage() {
                 </div>
 
                 {ok.document_type === "INVOICE" ? (
-                  <div className="text-gray-600">
-                    Balance due: {ok.balance_due} • Due: {ok.due_date || ok.invoice?.due_date || "—"}
-                  </div>
+                  <>
+                    <div className="text-gray-600">
+                      Paid now: {ok.amount_paid} • Balance due: {ok.balance_due}
+                    </div>
+                    <div className="text-gray-600">
+                      Due: {ok.due_date || ok.invoice?.due_date || "—"}
+                    </div>
+                  </>
                 ) : null}
 
                 <div className="mt-3 flex gap-2">
@@ -474,7 +465,7 @@ export default function PosPage() {
                   </Button>
 
                   {ok.document_type === "INVOICE" ? (
-                    <Button onClick={() => nav(`/app/sales/${ok.id}`)}>Invoice</Button>
+                    <Button onClick={() => nav(`/app/sales/${ok.id}/invoice`)}>Invoice</Button>
                   ) : (
                     <Button onClick={() => nav(`/app/sales/${ok.id}/receipt`)}>Receipt</Button>
                   )}
