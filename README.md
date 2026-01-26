@@ -253,7 +253,7 @@ ALLOWED_HOSTS=127.0.0.1,localhost
 ![Notifications](screenshots/notifications.png)
 
 #### Invoice
-![Invoice](screenshots/notifications.png)
+![Invoice](screenshots/invoice.png)
 
 ---
 
