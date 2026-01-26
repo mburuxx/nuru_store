@@ -1,4 +1,3 @@
-// pages/common/SaleDetailPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { salesApi } from "../../api/sales";

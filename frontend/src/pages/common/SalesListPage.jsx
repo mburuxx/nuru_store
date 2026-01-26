@@ -1,4 +1,3 @@
-// pages/common/SalesListPage.jsx
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { salesApi } from "../../api/sales";

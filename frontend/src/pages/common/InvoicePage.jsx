@@ -1,4 +1,3 @@
-// pages/common/InvoicePage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { salesApi } from "../../api/sales";
@@ -58,7 +57,6 @@ export default function InvoicePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 print:shadow-none print:border-0">
-        {/* header */}
         <div className="text-center">
           <div className="text-lg font-semibold">Nuru Store</div>
           <div className="text-xs text-gray-500">Invoice</div>
@@ -71,7 +69,6 @@ export default function InvoicePage() {
           </div>
         </div>
 
-        {/* summary */}
         <div className="mt-4 border-t border-gray-100 pt-4 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Sale ID</span>
@@ -104,7 +101,6 @@ export default function InvoicePage() {
           </div>
         </div>
 
-        {/* customer */}
         {sale.customer_name || sale.customer_phone ? (
           <div className="mt-4 border-t border-gray-100 pt-4 text-sm">
             <div className="font-semibold text-gray-900 mb-2">Customer</div>
@@ -121,7 +117,6 @@ export default function InvoicePage() {
           </div>
         ) : null}
 
-        {/* items */}
         <div className="mt-4 border-t border-gray-100 pt-4">
           <table className="w-full text-sm">
             <thead className="text-left text-gray-500">
@@ -148,7 +143,6 @@ export default function InvoicePage() {
           </table>
         </div>
 
-        {/* totals */}
         <div className="mt-4 border-t border-gray-100 pt-4 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Subtotal</span>
@@ -181,7 +175,6 @@ export default function InvoicePage() {
           ) : null}
         </div>
 
-        {/* payments */}
         {sale.payments?.length ? (
           <div className="mt-4 border-t border-gray-100 pt-4">
             <div className="font-semibold text-gray-900 text-sm mb-2">Payments</div>
@@ -206,7 +199,6 @@ export default function InvoicePage() {
           </div>
         ) : null}
 
-        {/* footer */}
         <div className="mt-4 border-t border-gray-100 pt-4 text-xs text-gray-500 text-center">
           You were served by{" "}
           <span className="font-medium text-gray-700">{sale.cashier_username || "—"}</span>
