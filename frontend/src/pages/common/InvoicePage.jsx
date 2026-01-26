@@ -29,7 +29,7 @@ export default function InvoicePage() {
   }, [id]);
 
   useEffect(() => {
-    document.title = `Invoice • Sale #${id} • NURU STORES`;
+    document.title = `Invoice • Sale #${id} • Nuru Stores`;
   }, [id]);
 
   if (loading) return <Loader />;

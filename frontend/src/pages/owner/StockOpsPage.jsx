@@ -301,10 +301,10 @@ export default function StockOpsPage() {
         </div>
 
         <div className="mt-6 text-sm text-gray-600">
-          <div className="font-medium text-gray-900">How receiving works in your app:</div>
+          <div className="font-medium text-gray-900">Tips:</div>
           <ul className="list-disc ml-5 mt-2 space-y-1">
             <li><span className="font-medium">New product?</span> Create it first (Products: name, category, SKU, prices).</li>
-            <li><span className="font-medium">Goods arrived?</span> Supply stock (IN). This creates a StockMovement for audit.</li>
+            <li><span className="font-medium">Goods arrived?</span> Supply stock (IN). This creates a StockMovement for audit. Adjust payments, accordingly</li>
             <li><span className="font-medium">Stock count correction?</span> Use Adjust (IN/OUT) with a clear note.</li>
           </ul>
         </div>
