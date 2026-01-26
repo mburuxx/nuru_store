@@ -1,16 +1,16 @@
 from decimal import Decimal
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
+from catalog.models import Product
 from inventory.models import Inventory, StockMovement
 from notifications.models import Notification
 from .models import Sale, SaleItem, Receipt, Invoice, Payment
 from .utils import generate_receipt_number, generate_invoice_number
 
-
 class InsufficientStock(Exception):
     pass
-
 
 @transaction.atomic
 def create_sale(
@@ -24,7 +24,6 @@ def create_sale(
     customer_phone: str = "",
     items: list[dict],
     receipt_prefix="RCPT",
-    invoice_prefix="INV",
 ) -> Sale:
     product_ids = [i["product_id"] for i in items]
 
@@ -59,6 +58,7 @@ def create_sale(
         subtotal += line_total
         sale_items_to_create.append((inv.product, qty, unit_price, line_total))
 
+
     if payment_type == Sale.PaymentType.PAY_NOW:
         if not payment_method:
             raise ValueError("payment_method is required for PAY_NOW.")
@@ -76,24 +76,16 @@ def create_sale(
     else:
         raise ValueError("Invalid payment_type.")
 
-    if amount_paid < Decimal("0.00"):
-        raise ValueError("amount_paid must be >= 0.")
-    if amount_paid > subtotal:
-        raise ValueError("amount_paid cannot exceed total.")
-
     payment_status = (
         Sale.PaymentStatus.PAID if amount_paid >= subtotal
         else Sale.PaymentStatus.PARTIAL if amount_paid > Decimal("0.00")
         else Sale.PaymentStatus.UNPAID
     )
 
-    if payment_type == Sale.PaymentType.CREDIT and amount_paid == Decimal("0.00"):
-        payment_method = None
-
     sale = Sale.objects.create(
         cashier=cashier,
         payment_type=payment_type,
-        payment_method=payment_method,
+        payment_method=payment_method,     
         amount_paid=amount_paid,
         due_date=due_date,
         customer_name=customer_name,
@@ -124,97 +116,28 @@ def create_sale(
             notes=f"Sale #{sale.id}",
         )
 
-    if amount_paid > Decimal("0.00"):
-        Payment.objects.create(
-            sale=sale,
-            method=payment_method,   
-            amount=amount_paid,
-            reference="",
-            received_by=cashier,
-        )
-
-
     if payment_status == Sale.PaymentStatus.PAID:
-        Receipt.objects.create(
-            sale=sale,
-            receipt_number=generate_receipt_number(prefix=receipt_prefix),
-        )
-    else:
-        if payment_type == Sale.PaymentType.CREDIT:
-            Invoice.objects.create(
-                sale=sale,
-                invoice_number=generate_invoice_number(prefix=invoice_prefix),
-                due_date=due_date,
-                status=Invoice.Status.OPEN,
-            )
+        receipt_no = generate_receipt_number(prefix=receipt_prefix)
+        Receipt.objects.create(sale=sale, receipt_number=receipt_no)
 
     owner_users = cashier.__class__.objects.filter(profile__role="OWNER", is_active=True)
     for owner in owner_users:
         Notification.objects.create(
             recipient=owner,
             type=Notification.Type.SALE_MADE,
-            message=f"Sale #{sale.id} recorded. Total: {sale.total} ({sale.payment_status})",
+            message=f"Sale #{sale.id} completed. Total: {sale.total}",
             sale_id=sale.id,
         )
 
-    return sale
-
-def add_payment(*, sale_id: int, received_by, method: str, amount: Decimal, reference: str = "") -> Sale:
-    if amount is None:
-        raise ValueError("Amount is required.")
-    if amount <= Decimal("0.00"):
-        raise ValueError("Amount must be greater than 0.")
-
-    with transaction.atomic():
-        sale = (
-            Sale.objects
-            .select_for_update()
-            .select_related("receipt", "invoice")
-            .get(id=sale_id)
-        )
-
-        if sale.status == Sale.Status.VOIDED:
-            raise ValueError("Cannot pay a voided sale.")
-
-        if sale.payment_status == Sale.PaymentStatus.PAID:
-            raise ValueError("This sale is already fully paid.")
-
-        balance = sale.total - sale.amount_paid
-        if amount > balance:
-            raise ValueError(f"Amount exceeds balance due ({balance}).")
-
-        Payment.objects.create(
+    if payment_type == Sale.PaymentType.CREDIT:
+        Invoice.objects.create(
             sale=sale,
-            method=method,
-            amount=amount,
-            reference=reference or "",
-            received_by=received_by,
+            due_date=due_date,
+            status=Invoice.Status.PAID if payment_status == Sale.PaymentStatus.PAID else Invoice.Status.OPEN,
+            invoice_number=generate_invoice_number(prefix="INV"),
         )
 
-        sale.amount_paid = sale.amount_paid + amount
-        sale.payment_method = method  
-        new_balance = sale.total - sale.amount_paid
-        if new_balance <= Decimal("0.00"):
-            sale.payment_status = Sale.PaymentStatus.PAID
-        else:
-            sale.payment_status = Sale.PaymentStatus.PARTIAL
-
-        sale.save(update_fields=["amount_paid", "payment_method", "payment_status"])
-
-        if sale.payment_status == Sale.PaymentStatus.PAID:
-            inv = getattr(sale, "invoice", None)
-            if inv:
-                inv.status = Invoice.Status.PAID
-                inv.save(update_fields=["status"])
-
-            if not getattr(sale, "receipt", None):
-                Receipt.objects.create(
-                    sale=sale,
-                    receipt_number=generate_receipt_number(prefix="RCPT"),
-                )
-
-        return sale
-    
+    return sale
 
 class AlreadyVoided(Exception):
     pass
@@ -222,12 +145,7 @@ class AlreadyVoided(Exception):
 
 @transaction.atomic
 def void_sale(*, sale_id: int, voided_by, notes: str = "") -> Sale:
-    sale = (
-        Sale.objects
-        .select_for_update()
-        .prefetch_related("items__product")
-        .get(id=sale_id)
-    )
+    sale = Sale.objects.select_for_update().prefetch_related("items__product").get(id=sale_id)
 
     if sale.status == Sale.Status.VOIDED:
         raise AlreadyVoided("Sale already voided.")
@@ -250,13 +168,85 @@ def void_sale(*, sale_id: int, voided_by, notes: str = "") -> Sale:
     for owner in owner_users:
         Notification.objects.create(
             recipient=owner,
-            type=(
-                Notification.Type.SALE_VOIDED
-                if hasattr(Notification.Type, "SALE_VOIDED")
-                else Notification.Type.SALE_MADE
-            ),
+            type=Notification.Type.SALE_VOIDED if hasattr(Notification.Type, "SALE_VOIDED") else Notification.Type.SALE_MADE,
             message=f"Sale #{sale.id} voided.",
             sale_id=sale.id,
         )
 
     return sale
+
+def add_payment(*, sale_id: int, received_by, method: str, amount: Decimal, reference: str = "") -> Sale:
+    """
+    Record a payment for a sale (typically CREDIT or PARTIAL).
+    - Creates Payment row
+    - Updates Sale.amount_paid + payment_status + payment_method (optional)
+    - If fully paid: closes invoice + generates receipt (if missing)
+    """
+    if amount is None:
+        raise ValueError("Amount is required.")
+    if amount <= Decimal("0.00"):
+        raise ValueError("Amount must be greater than 0.")
+
+    with transaction.atomic():
+        sale = (
+            Sale.objects
+            .select_for_update()
+            .select_related("receipt", "invoice")
+            .get(id=sale_id)
+        )
+
+        if sale.status == Sale.Status.VOIDED:
+            raise ValueError("Cannot pay a voided sale.")
+
+        if sale.payment_status == Sale.PaymentStatus.PAID:
+            raise ValueError("This sale is already fully paid.")
+
+        balance = sale.total - sale.amount_paid
+        if balance <= Decimal("0.00"):
+            sale.payment_status = Sale.PaymentStatus.PAID
+            sale.save(update_fields=["payment_status"])
+            raise ValueError("This sale is already fully paid.")
+
+        if amount > balance:
+            raise ValueError(f"Amount exceeds balance due ({balance}).")
+
+        Payment.objects.create(
+            sale=sale,
+            method=method,
+            amount=amount,
+            reference=reference or "",
+            received_by=received_by,
+        )
+
+        sale.amount_paid = sale.amount_paid + amount
+
+        sale.payment_method = method
+
+        new_balance = sale.total - sale.amount_paid
+        if new_balance <= Decimal("0.00"):
+            sale.payment_status = Sale.PaymentStatus.PAID
+        elif sale.amount_paid > Decimal("0.00"):
+            sale.payment_status = Sale.PaymentStatus.PARTIAL
+        else:
+            sale.payment_status = Sale.PaymentStatus.UNPAID
+
+        sale.save(update_fields=["amount_paid", "payment_method", "payment_status"])
+
+        if sale.payment_status == Sale.PaymentStatus.PAID:
+            inv = getattr(sale, "invoice", None)
+            if inv:
+                inv.status = Invoice.Status.PAID
+                inv.save(update_fields=["status"])
+
+            if not getattr(sale, "receipt", None):
+                Receipt.objects.create(
+                    sale=sale,
+                    receipt_number=generate_receipt_number(sale.id),
+                )
+
+        return sale
+
+
+def _generate_receipt_number(sale_id: int) -> str:
+    today = timezone.now().strftime("%Y%m%d")
+    return f"RCP-{today}-{sale_id:06d}"
