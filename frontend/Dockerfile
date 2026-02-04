@@ -3,7 +3,8 @@ FROM node:18-alpine as build
 WORKDIR /app
 
 COPY frontend/package*.json ./
-RUN npm ci
+# Try a clean CI install; fall back to `npm install` if lockfile and package.json are out of sync
+RUN npm ci || npm install --no-audit --no-fund --silent
 COPY frontend/ .
 RUN npm run build
 
