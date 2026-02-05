@@ -1,0 +1,28 @@
+plugins = []
+headers = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "/home/sherrif/Desktop/Django/nuru_store/frontend/hello-world/build"
+publishOrigin = "ui"
+commandOrigin = "ui"
+base = "/home/sherrif/Desktop/Django/nuru_store/frontend/hello-world"
+command = "npm run build"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
