@@ -1,61 +1,98 @@
-import { getAccess, getRefresh, setTokens, clearTokens } from "../auth/tokens.js";
+import { getAccess, getRefresh, setTokens, clearTokens } from "../state/auth.js";
 
-const API_BASE = ""; // same-origin -> "/api/..." works behind nginx
+const LOGIN_URL   = "/api/users/login/";
+const REFRESH_URL = "/api/users/refresh/";
 
-function jsonHeaders(extra = {}) {
-  return { "Content-Type": "application/json", ...extra };
+let refreshing = null;
+
+export async function safeJson(res){
+  const text = await res.text().catch(() => "");
+  try { return text ? JSON.parse(text) : {}; }
+  catch { return { raw: text }; }
 }
 
-async function parseJson(res) {
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text || null; }
-  return { ok: res.ok, status: res.status, data };
-}
-
-export async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
-  const headers = auth && getAccess()
-    ? jsonHeaders({ Authorization: `Bearer ${getAccess()}` })
-    : jsonHeaders();
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  // If access expired: try refresh once
-  if (auth && res.status === 401) {
-    const refreshed = await tryRefresh();
-    if (refreshed) {
-      const res2 = await fetch(`${API_BASE}${path}`, {
-        method,
-        headers: jsonHeaders({ Authorization: `Bearer ${getAccess()}` }),
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      return parseJson(res2);
-    }
-  }
-
-  return parseJson(res);
-}
-
-async function tryRefresh() {
+async function refreshAccess(){
   const refresh = getRefresh();
-  if (!refresh) return false;
+  if (!refresh) throw new Error("No refresh token");
 
-  const res = await fetch(`${API_BASE}/api/users/refresh/`, {
+  const res = await fetch(REFRESH_URL, {
     method: "POST",
-    headers: jsonHeaders(),
-    body: JSON.stringify({ refresh }),
+    headers: {"Content-Type":"application/json", "Accept":"application/json"},
+    body: JSON.stringify({ refresh })
   });
 
-  const { ok, data } = await parseJson(res);
-  if (!ok || !data?.access) {
+  const data = await safeJson(res);
+
+  if (!res.ok || !data?.access){
     clearTokens();
-    return false;
+    throw new Error(data?.detail || "Refresh failed");
   }
 
-  setTokens({ access: data.access, refresh }); // refresh stays same unless you rotate client-side
-  return true;
+  setTokens({ access: data.access });
+  return data.access;
+}
+
+async function ensureRefresh(){
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    try { return await refreshAccess(); }
+    finally { refreshing = null; }
+  })();
+  return refreshing;
+}
+
+export async function apiFetch(url, options = {}){
+  const headers = new Headers(options.headers || {});
+  headers.set("Accept", "application/json");
+
+  const access = getAccess();
+  if (access) headers.set("Authorization", `Bearer ${access}`);
+
+  const hasBody = options.body !== undefined && options.body !== null;
+  const isForm  = hasBody && (options.body instanceof FormData);
+
+  if (hasBody && !isForm && !headers.has("Content-Type")){
+    headers.set("Content-Type","application/json");
+  }
+
+  const first = await fetch(url, { ...options, headers });
+
+  if (first.status === 401 && getRefresh()){
+    const newAccess = await ensureRefresh();
+    const retryHeaders = new Headers(headers);
+    retryHeaders.set("Authorization", `Bearer ${newAccess}`);
+    return fetch(url, { ...options, headers: retryHeaders });
+  }
+
+  return first;
+}
+
+export async function login(username, password){
+  const res = await fetch(LOGIN_URL, {
+    method:"POST",
+    headers: {"Content-Type":"application/json", "Accept":"application/json"},
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await safeJson(res);
+  if (!res.ok) throw new Error(data?.detail || "Invalid username or password");
+
+  if (!data?.access || !data?.refresh) throw new Error("Missing tokens from login");
+  setTokens({ access: data.access, refresh: data.refresh });
+  return data;
+}
+
+export async function logout(){
+  // optional: call backend blacklist endpoint
+  const refresh = getRefresh();
+  try{
+    if (refresh){
+      await apiFetch("/api/users/logout/", {
+        method:"POST",
+        body: JSON.stringify({ refresh })
+      });
+    }
+  } finally {
+    clearTokens();
+  }
 }

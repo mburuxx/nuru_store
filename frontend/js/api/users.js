@@ -1,44 +1,45 @@
-import { apiFetch } from "./client.js";
-import { setTokens, clearTokens, getRefresh } from "../auth/tokens.js";
+import { apiFetch, safeJson } from "./client.js";
+import { setTokens } from "../state/auth.js";
 
-export async function register({ username, email, phone, password }) {
-  const res = await apiFetch("/api/users/register/", {
-    method: "POST",
-    auth: false,
-    body: { username, email, phone, password },
+export async function registerUser({ username, email, password, phone }){
+  const res = await fetch("/api/users/register/", {
+    method:"POST",
+    headers: {"Content-Type":"application/json", "Accept":"application/json"},
+    body: JSON.stringify({ username, email, password, phone })
   });
 
-  if (!res.ok) throw new Error(res.data?.detail || res.data?.message || "Registration failed");
-  // your RegisterView returns access + refresh
-  setTokens({ access: res.data.access, refresh: res.data.refresh });
-  return res.data;
-}
-
-export async function login({ username, password }) {
-  const res = await apiFetch("/api/users/login/", {
-    method: "POST",
-    auth: false,
-    body: { username, password },
-  });
-
-  if (!res.ok) throw new Error(res.data?.detail || "Invalid credentials");
-  // TokenObtainPairView returns access + refresh
-  setTokens({ access: res.data.access, refresh: res.data.refresh });
-  return res.data;
-}
-
-export async function getProfile() {
-  // ProfileView returns role + is_superuser + etc
-  const res = await apiFetch("/api/users/profile/");
-  if (!res.ok) throw new Error("Failed to load profile");
-  return res.data;
-}
-
-export async function logout() {
-  const refresh = getRefresh();
-  // best-effort logout; even if it fails, clear local tokens
-  if (refresh) {
-    await apiFetch("/api/users/logout/", { method: "POST", body: { refresh } }).catch(() => {});
+  const data = await safeJson(res);
+  if (!res.ok) {
+    // DRF returns field errors; keep it readable
+    throw new Error(data?.detail || JSON.stringify(data));
   }
-  clearTokens();
+
+  // Your RegisterView returns tokens directly ✅
+  if (data?.access && data?.refresh){
+    setTokens({ access: data.access, refresh: data.refresh });
+  }
+  return data;
+}
+
+export async function getMe(){
+  const res = await apiFetch("/api/users/me/", { method:"GET" });
+  const data = await safeJson(res);
+  if (!res.ok) throw new Error(data?.detail || "Failed to load profile");
+  return data;
+}
+
+export async function updateMe(payload){
+  const res = await apiFetch("/api/users/me/", {
+    method:"PATCH",
+    body: JSON.stringify(payload),
+  });
+  const data = await safeJson(res);
+  if (!res.ok) throw new Error(data?.detail || JSON.stringify(data));
+  return data;
+}
+
+export function roleToRoute(me){
+  // superuser treated as owner-ish
+  if (me?.is_superuser || me?.role === "OWNER") return "#/owner";
+  return "#/cashier";
 }

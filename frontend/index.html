@@ -1,55 +1,25 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auth App</title>
   <link rel="stylesheet" href="/css/main.css" />
-  <title>Login</title>
 </head>
 <body>
-  <main class="card">
-    <h1>Sign in</h1>
+  <header class="topbar">
+    <div class="brand" role="button" tabindex="0" id="goHome">Auth App</div>
+    <div class="right">
+      <span class="status" id="authStatus">Not logged in</span>
+      <button class="btn" id="btnLogout" style="display:none;">Logout</button>
+    </div>
+  </header>
 
-    <form id="loginForm">
-      <label>Username
-        <input name="username" autocomplete="username" required />
-      </label>
-
-      <label>Password
-        <input name="password" type="password" autocomplete="current-password" required />
-      </label>
-
-      <button type="submit">Login</button>
-      <p class="muted">No account? <a href="/pages/register.html">Register</a></p>
-
-      <p id="msg" class="msg"></p>
-    </form>
+  <main class="container">
+    <div id="toast" class="toast" style="display:none;"></div>
+    <div id="app"></div>
   </main>
 
-  <script type="module">
-    import { login, getProfile } from "/js/api/users.js";
-
-    const form = document.querySelector("#loginForm");
-    const msg = document.querySelector("#msg");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      msg.textContent = "";
-
-      const fd = new FormData(form);
-      const username = fd.get("username");
-      const password = fd.get("password");
-
-      try {
-        await login({ username, password });
-        const profile = await getProfile();
-        window.location.href = profile.role === "OWNER"
-          ? "/pages/owner-dashboard.html"
-          : "/pages/cashier-dashboard.html";
-      } catch (err) {
-        msg.textContent = err.message || "Login failed";
-      }
-    });
-  </script>
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>
