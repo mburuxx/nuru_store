@@ -29,7 +29,7 @@ export default function InvoicePage() {
   }, [id]);
 
   useEffect(() => {
-    document.title = `Invoice • Sale - ${id} • Nuru Stores`;
+    document.title = `Invoice • Sale #${id} • Nuru Stores`;
   }, [id]);
 
   if (loading) return <Loader />;
@@ -83,7 +83,7 @@ export default function InvoicePage() {
         <div className="mt-4 border-t border-gray-100 pt-4 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Sale ID</span>
-            <span className="font-medium">-{sale.id}</span>
+            <span className="font-medium">#{sale.id}</span>
           </div>
 
           <div className="flex justify-between mt-1">
