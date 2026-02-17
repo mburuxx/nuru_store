@@ -2,7 +2,10 @@ import React from "react";
 
 export function Card({ children, className = "" }) {
   return (
-    <div className={`rounded-2xl border border-gray-100 bg-white shadow-sm ${className}`}>
+    // Warmer border, slightly richer shadow — cards lift off the warm page background
+    <div
+      className={`rounded-2xl border border-stone-200/70 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)] ${className}`}
+    >
       {children}
     </div>
   );
@@ -10,12 +13,15 @@ export function Card({ children, className = "" }) {
 
 export function CardHeader({ title, subtitle, right }) {
   return (
-    <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-        {subtitle ? <p className="text-sm text-gray-500 mt-1">{subtitle}</p> : null}
+    <div className="px-6 pt-6 pb-4 flex flex-wrap items-start justify-between gap-4">
+      <div className="min-w-0">
+        {/* Slightly warmer heading colour — not pure gray-900 */}
+        <h1 className="text-xl font-semibold text-[#1B2A4A]">{title}</h1>
+        {subtitle ? (
+          <p className="text-sm text-stone-500 mt-1">{subtitle}</p>
+        ) : null}
       </div>
-      {right ? <div className="shrink-0">{right}</div> : null}
+      {right ? <div className="w-full sm:w-auto">{right}</div> : null}
     </div>
   );
 }

@@ -14,6 +14,7 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [err, setErr] = useState("");
+  const [togglingId, setTogglingId] = useState(null);
 
   async function load() {
     setErr("");
@@ -34,26 +35,45 @@ export default function CategoriesPage() {
     return () => clearTimeout(t);
   }, [q]);
 
-  async function toggleActive(c) {
+  async function toggleActive(e, c) {
+    // Stop the click from bubbling up to the row's nav handler
+    e.stopPropagation();
+    setTogglingId(c.id);
     try {
       if (c.is_active) await catalogApi.deactivateCategory(c.id);
       else await catalogApi.activateCategory(c.id);
       load();
     } catch {
       setErr("Failed to update category status.");
+    } finally {
+      setTogglingId(null);
     }
+  }
+
+  function goEdit(id) {
+    nav(`/app/owner/catalog/categories/${id}/edit`);
   }
 
   return (
     <Card>
       <CardHeader
         title="Categories"
-        subtitle="Create, edit, activate/deactivate categories."
-        right={<Button onClick={() => nav("/app/owner/catalog/categories/new")}>New category</Button>}
+        subtitle="Tap a category to edit it."
+        right={
+          <Button onClick={() => nav("/app/owner/catalog/categories/new")}>
+            New category
+          </Button>
+        }
       />
-      <CardBody>
+
+      <CardBody className="!px-4 !pt-0 sm:!px-6">
         <div className="max-w-md">
-          <Input label="Search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. electronics" />
+          <Input
+            label="Search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="e.g. electronics"
+          />
         </div>
 
         {err ? <div className="text-sm text-red-600 mt-4">{err}</div> : null}
@@ -65,46 +85,108 @@ export default function CategoriesPage() {
             <EmptyState
               title="No categories yet"
               subtitle="Create your first category to start organizing products."
-              action={<Button onClick={() => nav("/app/owner/catalog/categories/new")}>Create category</Button>}
+              action={
+                <Button onClick={() => nav("/app/owner/catalog/categories/new")}>
+                  Create category
+                </Button>
+              }
             />
           </div>
         ) : (
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-gray-500">
-                <tr className="border-b">
-                  <th className="py-3">Name</th>
-                  <th className="py-3">Slug</th>
-                  <th className="py-3">Parent</th>
-                  <th className="py-3">Status</th>
-                  <th className="py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((c) => (
-                  <tr key={c.id} className="border-b last:border-b-0">
-                    <td className="py-3 font-medium text-gray-900">{c.name}</td>
-                    <td className="py-3 text-gray-600">{c.slug}</td>
-                    <td className="py-3 text-gray-600">{c.parent ?? "—"}</td>
-                    <td className="py-3">
-                      <Badge tone={c.is_active ? "green" : "red"}>{c.is_active ? "Active" : "Inactive"}</Badge>
-                    </td>
-                    <td className="py-3 text-right space-x-2">
-                      <Button variant="ghost" onClick={() => nav(`/app/owner/catalog/categories/${c.id}/edit`)}>
-                        Edit
-                      </Button>
-                      <Button
-                        variant={c.is_active ? "secondary" : "primary"}
-                        onClick={() => toggleActive(c)}
-                      >
-                        {c.is_active ? "Deactivate" : "Activate"}
-                      </Button>
-                    </td>
+          <>
+            {/* ── Desktop table — hidden on mobile ── */}
+            <div className="hidden sm:block mt-6">
+              <table className="w-full text-sm">
+                <thead className="text-left text-gray-500">
+                  <tr className="border-b">
+                    <th className="py-3 pr-4">Name</th>
+                    <th className="py-3 pr-4">Slug</th>
+                    <th className="py-3 pr-4">Parent</th>
+                    <th className="py-3 pr-4">Status</th>
+                    <th className="py-3 text-right">Toggle</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {items.map((c) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => goEdit(c.id)}
+                      className="border-b last:border-b-0 hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <td className="py-3 pr-4 font-medium text-gray-900 max-w-[160px] truncate">
+                        {c.name}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-500 max-w-[140px] truncate">{c.slug}</td>
+                      <td className="py-3 pr-4 text-gray-500">{c.parent ?? "—"}</td>
+                      <td className="py-3 pr-4">
+                        <Badge tone={c.is_active ? "green" : "red"}>
+                          {c.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </td>
+                      <td className="py-3 text-right">
+                        <Button
+                          variant={c.is_active ? "secondary" : "primary"}
+                          onClick={(e) => toggleActive(e, c)}
+                          disabled={togglingId === c.id}
+                        >
+                          {togglingId === c.id
+                            ? "..."
+                            : c.is_active ? "Deactivate" : "Activate"}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Mobile card rows — hidden on desktop ── */}
+            <div className="sm:hidden mt-4 space-y-2">
+              {items.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => goEdit(c.id)}
+                  className="w-full text-left rounded-2xl border border-gray-100 bg-white hover:bg-gray-50 active:bg-gray-100 transition p-4"
+                >
+                  {/* Row 1: name + status badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-semibold text-gray-900 truncate min-w-0">{c.name}</span>
+                    <Badge tone={c.is_active ? "green" : "red"} className="flex-shrink-0">
+                      {c.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+
+                  {/* Row 2: slug + parent */}
+                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 min-w-0">
+                    <span className="truncate">{c.slug}</span>
+                    {c.parent ? (
+                      <>
+                        <span className="text-gray-300 flex-shrink-0">·</span>
+                        <span className="truncate">Parent: {c.parent}</span>
+                      </>
+                    ) : null}
+                  </div>
+
+                  {/* Row 3: toggle — stopPropagation so it doesn't trigger edit nav */}
+                  <div
+                    className="mt-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant={c.is_active ? "secondary" : "primary"}
+                      onClick={(e) => toggleActive(e, c)}
+                      disabled={togglingId === c.id}
+                    >
+                      {togglingId === c.id
+                        ? "Updating..."
+                        : c.is_active ? "Deactivate" : "Activate"}
+                    </Button>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </CardBody>
     </Card>
