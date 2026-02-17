@@ -237,7 +237,6 @@ export default function AppLayout() {
         { to: "/app/owner/inventory",          label: "Inventory",  end: true },
         { to: "/app/owner/inventory/ops",      label: "Stock Ops" },
         { to: "/app/owner/catalog/products",   label: "Products" },
-        { to: "/app/owner/catalog/categories", label: "Categories" },
         { to: "/app/sales",                    label: "Sales" },
       ];
     }
