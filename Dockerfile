@@ -19,8 +19,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy Django project (frontend excluded via .dockerignore)
 COPY . .
 
-# Collect static at build time so the image is self-contained
-RUN python manage.py collectstatic --noinput
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 8000
 
