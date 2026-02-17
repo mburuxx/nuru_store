@@ -1,5 +1,13 @@
+# Never send these into the Docker build context
+frontend/
+.git/
+.gitignore
+screenshots/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*.egg-info/
 .env
-*/__pycache__/
-*.sqlite3
-*.pyc
-/.idea
+venv/
+.venv/
+staticfiles/
